@@ -1,0 +1,27 @@
+{
+  "workbench.colorCustomizations": {
+    "[Visual Studio Dark][Default Dark+]": {
+      "tab.activeBorder": "#0F0"
+    },
+    "editor.wordHighlightStrongBorder": "#FF6347",
+    "editor.wordHighlightBorder": "#FFD700",
+    "editor.selectionHighlightBorder": "#A9A9A9",
+    "activityBar.background": "#D2691E",
+    "titleBar.activeBackground": "#E69052",
+    "titleBar.activeForeground": "#FEFAF7"
+  },
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-11",
+      "path": "/usr/lib/jvm/jdk-11.0.13",
+      "sources": "/usr/lib/jvm/jdk-11.0.13/lib/src.zip",
+      "javadoc": "https://docs.oracle.com/en/java/javase/11/docs/api",
+      "default": true
+    }
+  ],
+  "files.associations": {
+    "numeric": "cpp",
+    "*.tcc": "cpp",
+    "istream": "cpp"
+  }
+}

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>DASHBOARD WIFI SOCKET </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="./img/favicon.png">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        window.jQuery || document.write(decodeURIComponent('%3Cscript src="js/jquery.min.js"%3E%3C/script%3E'))
+    </script>
+    <link rel="stylesheet" type="text/css" href="https://cdn3.devexpress.com/jslib/22.2.6/css/dx.light.css" />
+    <script src="https://cdn3.devexpress.com/jslib/22.2.6/js/dx.all.js"></script>
+    <script src="chart1.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <script src="https://cdn.zingchart.com/zingchart.min.js"></script>
+
+</head>
+
+<body>
+    <div class="topnav">
+        <!-- <img src="logo.png" height="100px" width="100px" /> -->
+        <h1>3rd PROJECT</h1>
+        <h1>Remote-Controlled Power Socket and Energy Consumption Measurement</h1>
+    </div>
+    <div class="content">
+        <div class="card">
+            <div class="card-grid">
+                <div class="information">
+                    <div class="clock-display">
+                        <p style="font-size:1rem; color:brown" id="date"></p>
+                        <h3 id="MyClockDisplay" class="clock" onload="showTime()"></h3>
+                    </div>
+                </div>
+                <div class="information">
+                    <span style="color: rgb(0, 0, 0);margin-top: 15px" class="material-symbols-outlined">bolt </span>
+                    <h2 style="color: rgb(0, 0, 0);">ENERGY (kWh)</h2>
+                    <h1 style="color:rgb(255, 0, 0); margin-top: 15px;" id="energy_value">50 kWh</h1>
+                </div>
+                <div class="information">
+                    <span style="color: rgb(0, 0, 0);margin-top: 15px" class="material-symbols-outlined">
+                        query_stats
+                        </span>
+                    <h2 style="color: rgb(0, 0, 0);">POWER FACTOR</h2>
+                    <h1 style="color:rgb(42, 102, 212); margin-top: 15px;" id="pfactor_value">0.91</h1>
+                </div>
+                <div class="information">
+                    <span style="color: rgb(0, 0, 0);margin-top: 15px" class="material-symbols-outlined">
+                        earthquake
+                        </span>
+                    <h2 style="color: rgb(0, 0, 0);">FREQUENCY (Hz)</h2>
+                    <h1 style="color:rgb(44, 182, 113); margin-top: 15px;" id="freq_value">50 Hz</h1>
+                </div>
+            </div>
+            <div class="card-grid">
+                <div class="information">
+                    <span style="color: rgb(0, 0, 0);margin-top: 15px" class="material-symbols-outlined">electric_meter </span>
+                    <h2 style="color: rgb(0, 0, 0);">VOLTAGE (V)</h2>
+                    <h1 style="color:rgb(202, 182, 4); margin-top: 15px;" id="voltage_value">220V</h1>
+                </div>
+                <div class="information">
+                    <span style="color: rgb(0, 0, 0);margin-top: 15px" class="material-symbols-outlined">vital_signs </span>
+                    <h2 style="color: rgb(0, 0, 0);">CURRENT (A)</h2>
+                    <h1 style="color:rgb(187, 31, 117); margin-top: 15px;" id="current_value">220A</h1>
+                </div>
+                <div class="information">
+                    <span style="color: rgb(0, 0, 0);margin-top: 15px" class="material-symbols-outlined">offline_bolt </span>
+                    <h2 style="color: rgb(0, 0, 0);">POWER (W)</h2>
+                    <h1 style="color:rgb(243, 111, 3); margin-top: 15px;" id="power_value">220W</h1>
+                </div>
+                <div class="information">
+                    <h1 style="color:rgb(243, 111, 3); margin-top: 15px;">Coming soon...</h1>
+                </div>
+            </div>
+            <div id="myChart"></div>
+        </div>
+        <div class="card">
+            <div class="control-container">
+                <div class="center-container">
+                    <h2>CONTROL PANEL</h2>
+                    <!-- <p class="state">state: <span id="state">%STATE%</span></p> -->
+                </div>
+                <div class="center-container">
+                    <div class="border" id="all_btn"></div>
+                </div>
+                <div class="button-container">
+                    <div class="button-item" id="first_btn">
+                    </div>
+                    <div class="button-item" id="second_btn">
+                    </div>
+                    <div class="button-item" id="thirst_btn">
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <div class="botnav">
+        <!--    <-- Thanh footer -->
+        <div class="card-grid">
+            <div class="a">
+                <h3 style="text-align: left;color:rgb(170, 36, 36);padding-top:10px;">ACADEMY OF CRYPTOGRAPHY AND TECHNIQUES</h3>
+                <h4 style="text-align: left;">Nguyen Trong Khoi DT030223</h4>
+                <h4 style="text-align: left;">Phone Number: 0855073665</h4>
+                <h4 style="text-align: left;">Email: nguyenkhoi211001@gmail.com</h4>
+            </div>
+            <div class="button-container">
+                <a href="https://www.facebook.com/KhoiTN01/" target="_blank">
+                    <img src="./img/social/facebook1.png" alt="facebook">
+                </a>
+                <a href="https://www.instagram.com/_khoint_2101/" target="_blank">
+                    <img src="./img/social/instagram1.png" alt="instagram">
+                </a>
+                <a href="https://actvn.edu.vn" target="_blank">
+                    <img src="./img/actvn_big_icon.png" alt="myschool" width="90px" height="90px">
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+
+    </div>
+
+
+    <script src="./script.js"></script>
+    <script src="./chart1.js"></script>
+    <script src="./chart.js"></script>
+
+</body>
+
+</html>
