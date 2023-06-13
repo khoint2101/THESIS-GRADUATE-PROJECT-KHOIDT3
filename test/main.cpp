@@ -20,7 +20,6 @@ bool state_SK1 = 0;
 bool state_SK2 = 0;
 bool state_SK3 = 0;
 
-bool wifiConnected = false; // flag to track successful WiFi connection
 bool shouldRestart = false; // flag to track if restart is needed
 // define variable
 float voltageValue;
