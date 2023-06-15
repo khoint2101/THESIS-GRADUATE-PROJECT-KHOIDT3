@@ -25,7 +25,7 @@ void setup()
 {
     tft.init();
     tft.setRotation(1);
-    WiFi.begin(ssid,password);
+    WiFi.begin(ssid, password);
     if (WiFi.waitForConnectResult() != WL_CONNECTED)
     {
         Serial.printf("WiFi Failed!\n");
@@ -34,7 +34,8 @@ void setup()
     // WELCOME_SCREEN();
     // START_CONFIG_WF_SCREEN();
     // STOP_CONFIG_WF_SCREEN();
-    WIFI_INFOR_SCREEN();
+    //WIFI_INFOR_SCREEN();
+    DASHBOARD_SCREEN();
 }
 
 void loop()
@@ -107,7 +108,7 @@ void STOP_CONFIG_WF_SCREEN() // done
     tft.setTextSize(1);
     tft.print(" RESTARTING...");
 }
-void WIFI_INFOR_SCREEN()   // done
+void WIFI_INFOR_SCREEN() // done
 {
     tft.fillScreen(TFT_WHITE);
     tft.setTextColor(TFT_DARKGREEN, TFT_YELLOW);
@@ -136,4 +137,39 @@ void WIFI_INFOR_SCREEN()   // done
 }
 void DASHBOARD_SCREEN()
 {
+    // tft.fillRect(10, 48, 46, 15, TFT_WHITE); 
+    // tft.fillRect(78, 48, 45, 15, TFT_WHITE); 
+    // tft.fillRect(10, 105, 42, 15, TFT_WHITE);
+    // tft.fillRect(80, 105, 47, 15, TFT_WHITE);
+    tft.fillScreen(TFT_WHITE);
+    tft.setTextColor(TFT_DARKGREEN, TFT_YELLOW);
+    tft.setCursor(0, 1);
+    tft.setTextSize(2);
+    tft.println(" DASHBOARD");
+
+    // tft.setTextColor(TFT_RED);
+    // tft.setTextSize(2);
+    // tft.drawFloat(temp_value, 1, 10, 48);
+    // tft.setCursor(58, 48);
+    // tft.setTextSize(1);
+    // tft.printf("%cC", 248);
+    // // Do am ko khi
+    // tft.setTextColor(TFT_BLUE);
+    // tft.setTextSize(2);
+    // tft.drawNumber(humi_value, 78, 48);
+    // tft.setCursor(115, 48);
+    // tft.print("%");
+    // // Do am dat
+    // tft.setTextColor(TFT_BROWN);
+    // tft.setTextSize(2);
+    // tft.drawNumber(soil_value, 12, 105);
+    // tft.setCursor(48, 105);
+    // tft.print("%");
+    // // Anh sang
+    // tft.setTextColor(TFT_ORANGE);
+    // tft.setTextSize(1);
+    // tft.drawNumber(light_value, 82, 105);
+    // tft.setCursor(90, 115);
+    // tft.setTextSize(1);
+    // tft.print("lux");
 }
