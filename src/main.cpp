@@ -16,6 +16,9 @@
 #endif
 #define PZEM_SERIAL Serial2
 #define TRIGGER_PIN 0
+#define IN1_RELAY 12
+#define IN2_RELAY 14
+#define IN3_RELAY 27
 PZEM004Tv30 pzem(PZEM_SERIAL, PZEM_RX_PIN, PZEM_TX_PIN);
 TFT_eSPI tft = TFT_eSPI();
 // State button
@@ -23,9 +26,9 @@ bool mainButton = 1;
 bool state_SK1 = 0;
 bool state_SK2 = 0;
 bool state_SK3 = 0;
-
 bool shouldRestart = false; // flag to track if restart is needed
 byte screenChange = 0;      // switch between wifi detail and dashboard
+
 // define variable
 float voltageValue;
 float currentValue;
@@ -49,6 +52,8 @@ void START_CONFIG_WF_SCREEN();
 void STOP_CONFIG_WF_SCREEN();
 void WIFI_INFOR_SCREEN();
 void DASHBOARD_SCREEN();
+void VALUE_DASHBOARD_SCREEN();
+
 //==============End prototype===========
 // const char *ssid = "Hang_2.4G";
 // const char *password = "0948315735";
@@ -56,6 +61,7 @@ void DASHBOARD_SCREEN();
 const char *PARAM_MESSAGE = "message";
 
 unsigned long previousMillis = 0;
+unsigned long previousMillis1 = 0;
 
 //======Para==============
 
@@ -97,7 +103,7 @@ String getDataPower()
     dataPower["Volt"] = String(voltageValue);
     dataPower["Current"] = String(currentValue);
     dataPower["Power"] = String(powerValue);
-    dataPower["Energy"] = String(energyValue);
+    dataPower["Energy"] = String(energyValue,4);
     dataPower["Freq"] = String(freqValue);
     dataPower["Pf"] = String(pfValue);
 
@@ -121,6 +127,10 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK1 = true;
             state_SK2 = true;
             state_SK3 = true;
+
+            digitalWrite(IN1_RELAY, 1);
+            digitalWrite(IN2_RELAY, 1);
+            digitalWrite(IN3_RELAY, 1);
             Serial.println(mainButton);
             ws.textAll(getStateButton());
             // ws.textAll("000");
@@ -131,6 +141,9 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK1 = false;
             state_SK2 = false;
             state_SK3 = false;
+            digitalWrite(IN1_RELAY, 0);
+            digitalWrite(IN2_RELAY, 0);
+            digitalWrite(IN3_RELAY, 0);
             Serial.println(mainButton);
             ws.textAll(getStateButton());
             //  ws.textAll("001");
@@ -138,6 +151,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "onsk1") == 0)
         {
             state_SK1 = true;
+            digitalWrite(IN1_RELAY, 1);
             Serial.println("SK 1 on");
             ws.textAll(getStateButton());
             //  ws.textAll("010");
@@ -146,12 +160,14 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         {
             state_SK1 = false;
             Serial.println("SK 1 off");
+            digitalWrite(IN1_RELAY, 0);
             ws.textAll(getStateButton());
             // ws.textAll("011");
         }
         else if (strcmp((char *)data, "onsk2") == 0)
         {
             state_SK2 = true;
+            digitalWrite(IN2_RELAY, 1);
             Serial.println("SK 2 on");
             ws.textAll(getStateButton());
             // ws.textAll("100");
@@ -159,6 +175,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "offsk2") == 0)
         {
             state_SK2 = false;
+            digitalWrite(IN2_RELAY, 0);
             Serial.println("SK 2 off");
             ws.textAll(getStateButton());
             // ws.textAll("101");
@@ -166,6 +183,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "onsk3") == 0)
         {
             state_SK3 = true;
+            digitalWrite(IN3_RELAY, 1);
             Serial.println("SK 3 on");
             ws.textAll(getStateButton());
             // ws.textAll("110");
@@ -173,6 +191,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "offsk3") == 0)
         {
             state_SK3 = false;
+            digitalWrite(IN3_RELAY, 0);
             Serial.println("SK 3 off");
             ws.textAll(getStateButton());
             // ws.textAll("111");
@@ -212,6 +231,13 @@ void initWebSocket()
     server.addHandler(&ws);
 }
 
+void initRelayPin()
+{
+    pinMode(IN1_RELAY, OUTPUT);
+    pinMode(IN2_RELAY, OUTPUT);
+    pinMode(IN3_RELAY, OUTPUT);
+}
+
 void setup()
 {
     WiFi.mode(WIFI_STA);
@@ -226,6 +252,7 @@ void setup()
     tft.init();
     tft.setRotation(1);
     WELCOME_SCREEN();
+    initRelayPin();
     Serial.setDebugOutput(true);
     // delay(3000);   // if you won't change port, you must hard restart
     // wm.setHttpPort(8080); // set another port for WM because https://github.com/rancilio-pid/clevercoffee/issues/323
@@ -280,13 +307,13 @@ void loop()
     if (currentMillis - previousMillis >= 1500)
     {
         // Thực hiện các hoạt động sau mỗi interval
-        // readPzem();      // chạy thật dụng hàm này
-        voltageValue = random(100, 260);
-        currentValue = random(0.0, 30.5);
-        powerValue = random(100, 4000);
-        energyValue = random(1, 100);
-        pfValue = random(0.0, 10.0);
-        freqValue = random(40.0, 50.0);
+        readPzem();      // chạy thật dụng hàm này
+        // voltageValue = random(100, 260);
+        // currentValue = random(0.0, 30.5);
+        // powerValue = random(100, 4000);
+        // energyValue = random(1, 100);
+        // pfValue = random(0.0, 10.0);
+        // freqValue = random(40.0, 50.0);
 
         notifyClients(getDataPower());
 
@@ -329,7 +356,12 @@ void MainScreenChange()
     else if (screenChange == 2)
     {
         // tft.fillScreen(TFT_WHITE);
+        unsigned long currentMillis1 = millis();
         DASHBOARD_SCREEN();
+        if (currentMillis1 - previousMillis1 >= 1500){
+            VALUE_DASHBOARD_SCREEN();
+            previousMillis1 = currentMillis1;
+        }
     }
 }
 //==========Workspace with Pzem=========
@@ -354,6 +386,8 @@ void readPzem()
     if (isnan(voltageValue))
     {
         Serial.println("Error reading voltage");
+        currentValue = 0;
+        powerValue = 0;
     }
     else if (isnan(currentValue))
     {
@@ -494,7 +528,7 @@ void WIFI_INFOR_SCREEN() // done
     tft.setTextColor(TFT_RED);
     tft.setCursor(3, 70);
     tft.println("2. IP Webserver: \n");
-    
+
     if (WiFi.status() != WL_CONNECTED)
     {
         tft.fillCircle(100, 54, 7, TFT_RED);
@@ -504,10 +538,10 @@ void WIFI_INFOR_SCREEN() // done
     else
     {
         tft.setTextColor(TFT_DARKGREEN);
-        tft.setCursor(20,50);
+        tft.setCursor(20, 50);
         tft.print(WiFi.SSID());
         tft.setTextColor(TFT_DARKGREEN);
-        tft.setCursor(20,84);
+        tft.setCursor(20, 84);
         tft.print(WiFi.localIP());
         tft.fillCircle(100, 54, 7, TFT_GREEN);
     }
@@ -519,39 +553,43 @@ void WIFI_INFOR_SCREEN() // done
 }
 void DASHBOARD_SCREEN()
 {
-    // tft.fillRect(10, 48, 46, 15, TFT_WHITE);
-    // tft.fillRect(78, 48, 45, 15, TFT_WHITE);
-    // tft.fillRect(10, 105, 42, 15, TFT_WHITE);
-    // tft.fillRect(80, 105, 47, 15, TFT_WHITE);
-    // tft.fillScreen(TFT_WHITE);
+    
     tft.setTextColor(TFT_DARKGREEN, TFT_YELLOW);
     tft.setCursor(0, 1);
     tft.setTextSize(2);
     tft.println(" DASHBOARD");
 
-    // tft.setTextColor(TFT_RED);
-    // tft.setTextSize(2);
-    // tft.drawFloat(temp_value, 1, 10, 48);
-    // tft.setCursor(58, 48);
-    // tft.setTextSize(1);
-    // tft.printf("%cC", 248);
-    // // Do am ko khi
-    // tft.setTextColor(TFT_BLUE);
-    // tft.setTextSize(2);
-    // tft.drawNumber(humi_value, 78, 48);
-    // tft.setCursor(115, 48);
-    // tft.print("%");
-    // // Do am dat
-    // tft.setTextColor(TFT_BROWN);
-    // tft.setTextSize(2);
-    // tft.drawNumber(soil_value, 12, 105);
-    // tft.setCursor(48, 105);
-    // tft.print("%");
-    // // Anh sang
-    // tft.setTextColor(TFT_ORANGE);
-    // tft.setTextSize(1);
-    // tft.drawNumber(light_value, 82, 105);
-    // tft.setCursor(90, 115);
-    // tft.setTextSize(1);
-    // tft.print("lux");
+    tft.setTextColor(TFT_NAVY);
+    tft.setTextSize(1);
+    tft.setCursor(5, 20);
+    tft.print("1. VOLTAGE:");
+    tft.setCursor(5, 50);
+    tft.print("2. CURRENT:");
+    tft.setCursor(5, 80);
+    tft.print("3. POWER:");
+    tft.setCursor(5, 110);
+    tft.print("4. ENERGY:");
+
+}
+void VALUE_DASHBOARD_SCREEN()
+{
+    tft.fillRect(20, 28, 100, 20, TFT_WHITE);
+    tft.fillRect(20, 58, 100, 20, TFT_WHITE);
+    tft.fillRect(20, 88, 100, 20, TFT_WHITE);
+    tft.fillRect(65, 109, 40, 20, TFT_WHITE);
+
+    tft.setTextColor(TFT_RED);
+    tft.setTextSize(1);
+    tft.drawFloat(voltageValue,1,50,35);
+    tft.setCursor(100,34);
+    tft.print(" V");
+    tft.drawFloat(currentValue,2,50,65);
+    tft.setCursor(100,64);
+    tft.print(" A");
+    tft.drawFloat(powerValue,1,40,95);
+    tft.setCursor(100,94);
+    tft.print(" W");
+    tft.drawFloat(energyValue,4,65,109);
+    tft.setCursor(100,109);
+    tft.print(" kWh");
 }

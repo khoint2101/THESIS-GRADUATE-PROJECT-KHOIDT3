@@ -6,6 +6,7 @@ var myConfig = {
     },
     graphset: [{
         type: "line",
+        // adjustScale: true,
         plotarea: {
             'adjust-layout': true /* For automatic margin adjustment. */
         },
