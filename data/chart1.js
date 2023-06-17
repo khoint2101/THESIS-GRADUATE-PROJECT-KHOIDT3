@@ -136,6 +136,6 @@ jQuery(document).ready(function($) {
         gauge2.option('value', ampeVar);
         gauge3.option('value', powerVar);
 
-    }, 1500); // Gọi lại hàm sau mỗi 2 giây
+    }, 1000); // Gọi lại hàm sau mỗi 2 giây
 
 });
