@@ -103,7 +103,7 @@ String getDataPower()
     dataPower["Volt"] = String(voltageValue);
     dataPower["Current"] = String(currentValue);
     dataPower["Power"] = String(powerValue);
-    dataPower["Energy"] = String(energyValue,4);
+    dataPower["Energy"] = String(energyValue, 4);
     dataPower["Freq"] = String(freqValue);
     dataPower["Pf"] = String(pfValue);
 
@@ -242,13 +242,7 @@ void setup()
 {
     WiFi.mode(WIFI_STA);
     Serial.begin(115200);
-    // initFS();
-    // WiFi.begin(ssid, password);
-    // if (WiFi.waitForConnectResult() != WL_CONNECTED)
-    // {
-    //     Serial.printf("WiFi Failed!\n");
-    //     return;
-    // }
+
     tft.init();
     tft.setRotation(1);
     WELCOME_SCREEN();
@@ -307,7 +301,7 @@ void loop()
     if (currentMillis - previousMillis >= 1500)
     {
         // Thực hiện các hoạt động sau mỗi interval
-        readPzem();      // chạy thật dụng hàm này
+         readPzem(); // chạy thật dụng hàm này
         // voltageValue = random(100, 260);
         // currentValue = random(0.0, 30.5);
         // powerValue = random(100, 4000);
@@ -358,7 +352,8 @@ void MainScreenChange()
         // tft.fillScreen(TFT_WHITE);
         unsigned long currentMillis1 = millis();
         DASHBOARD_SCREEN();
-        if (currentMillis1 - previousMillis1 >= 1500){
+        if (currentMillis1 - previousMillis1 >= 1500)
+        {
             VALUE_DASHBOARD_SCREEN();
             previousMillis1 = currentMillis1;
         }
@@ -553,7 +548,7 @@ void WIFI_INFOR_SCREEN() // done
 }
 void DASHBOARD_SCREEN()
 {
-    
+
     tft.setTextColor(TFT_DARKGREEN, TFT_YELLOW);
     tft.setCursor(0, 1);
     tft.setTextSize(2);
@@ -569,27 +564,34 @@ void DASHBOARD_SCREEN()
     tft.print("3. POWER:");
     tft.setCursor(5, 110);
     tft.print("4. ENERGY:");
-
 }
 void VALUE_DASHBOARD_SCREEN()
 {
-    tft.fillRect(20, 28, 100, 20, TFT_WHITE);
-    tft.fillRect(20, 58, 100, 20, TFT_WHITE);
-    tft.fillRect(20, 88, 100, 20, TFT_WHITE);
+    tft.fillRect(5, 28, 95, 20, TFT_WHITE);
+    tft.fillRect(20, 58, 80, 20, TFT_WHITE);
+    tft.fillRect(20, 88, 80, 20, TFT_WHITE);
     tft.fillRect(65, 109, 40, 20, TFT_WHITE);
 
     tft.setTextColor(TFT_RED);
     tft.setTextSize(1);
-    tft.drawFloat(voltageValue,1,50,35);
-    tft.setCursor(100,34);
+    if (isnan(voltageValue))
+    {
+        tft.setCursor(10, 35);
+        tft.print("Can't Read!! ");
+    }
+    else
+    {
+        tft.drawFloat(voltageValue, 1, 50, 35);
+    }
+    tft.setCursor(100, 34);
     tft.print(" V");
-    tft.drawFloat(currentValue,2,50,65);
-    tft.setCursor(100,64);
+    tft.drawFloat(currentValue, 2, 50, 65);
+    tft.setCursor(100, 64);
     tft.print(" A");
-    tft.drawFloat(powerValue,1,40,95);
-    tft.setCursor(100,94);
+    tft.drawFloat(powerValue, 1, 40, 95);
+    tft.setCursor(100, 94);
     tft.print(" W");
-    tft.drawFloat(energyValue,4,65,109);
-    tft.setCursor(100,109);
+    tft.drawFloat(energyValue, 4, 65, 109);
+    tft.setCursor(100, 109);
     tft.print(" kWh");
 }

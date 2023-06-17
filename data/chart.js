@@ -64,7 +64,7 @@ var myConfig = {
             }
         },
         "scale-y-3": {
-            values: "0:260:25",
+            values: "200:260:25",
             placement: "2",
             lineColor: "#00AE4D",
             tick: {
