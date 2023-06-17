@@ -8,6 +8,8 @@
 #include <ESPAsyncWebServer.h>
 #include <TFT_eSPI.h>
 #include <SPI.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
 #include "bitmap.h"
 
 #if !defined(PZEM_RX_PIN) && !defined(PZEM_TX_PIN)
@@ -16,6 +18,7 @@
 #endif
 #define PZEM_SERIAL Serial2
 #define TRIGGER_PIN 0
+#define RESET_PZEM 22
 #define IN1_RELAY 12
 #define IN2_RELAY 14
 #define IN3_RELAY 27
@@ -28,8 +31,9 @@ bool state_SK2 = 0;
 bool state_SK3 = 0;
 bool shouldRestart = false; // flag to track if restart is needed
 byte screenChange = 0;      // switch between wifi detail and dashboard
+char auth[] = "1L3LGRGCGYD2bPsp7lOXuP2WoyiEb8rb";
 
-// define variable
+// define variable Pzem 004T
 float voltageValue;
 float currentValue;
 float powerValue;
@@ -46,6 +50,9 @@ void readPzem();
 void checkButton();
 void checkWifi_config();
 void MainScreenChange();
+void sendValue_Blynk();
+void resetValuePzem();
+void checkAlarmPower();
 //-----Screen--------
 void WELCOME_SCREEN();
 void START_CONFIG_WF_SCREEN();
@@ -55,11 +62,9 @@ void DASHBOARD_SCREEN();
 void VALUE_DASHBOARD_SCREEN();
 
 //==============End prototype===========
-// const char *ssid = "Hang_2.4G";
-// const char *password = "0948315735";
 
 const char *PARAM_MESSAGE = "message";
-
+//========Timer Variable==========
 unsigned long previousMillis = 0;
 unsigned long previousMillis1 = 0;
 
@@ -80,9 +85,10 @@ void initFS()
         Serial.println("SPIFFS mounted successfully");
     }
 }
-// Json Variable to StateButton
+// Json Variable ==============
 JSONVar stateButton, dataPower;
 
+// ==============JSON STRING=================
 // Get State Button
 String getStateButton()
 {
@@ -95,8 +101,8 @@ String getStateButton()
     String jsonString_button = JSON.stringify(stateButton);
     return jsonString_button;
 }
-//=============================================
-// JSON of data
+//---------------------------
+// Get data to StringJSON
 String getDataPower()
 {
     dataPower["Type"] = "data";
@@ -110,11 +116,13 @@ String getDataPower()
     String jsonString_data = JSON.stringify(dataPower);
     return jsonString_data;
 }
+//==============END JSON STRING=================
+
 void notifyClients(String x) // notice to all client
 {
     ws.textAll(x);
 }
-/*Xử lý truyền nhận data khi bấm nút thành công-  Chưa có hiển thị trạng thái nút đang dùng */
+/*Xử lý truyền nhận data khi bấm nút thành công */
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
 {
     AwsFrameInfo *info = (AwsFrameInfo *)arg;
@@ -133,6 +141,9 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN3_RELAY, 1);
             Serial.println(mainButton);
             ws.textAll(getStateButton());
+            Blynk.virtualWrite(V6, HIGH);
+            Blynk.virtualWrite(V7, HIGH);
+            Blynk.virtualWrite(V8, HIGH);
             // ws.textAll("000");
         }
         else if (strcmp((char *)data, "offall") == 0)
@@ -146,6 +157,10 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN3_RELAY, 0);
             Serial.println(mainButton);
             ws.textAll(getStateButton());
+            Blynk.virtualWrite(V6, LOW);
+            Blynk.virtualWrite(V7, LOW);
+            Blynk.virtualWrite(V8, LOW);
+
             //  ws.textAll("001");
         }
         else if (strcmp((char *)data, "onsk1") == 0)
@@ -154,6 +169,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN1_RELAY, 1);
             Serial.println("SK 1 on");
             ws.textAll(getStateButton());
+            Blynk.virtualWrite(V6, HIGH);
+
             //  ws.textAll("010");
         }
         else if (strcmp((char *)data, "offsk1") == 0)
@@ -162,6 +179,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             Serial.println("SK 1 off");
             digitalWrite(IN1_RELAY, 0);
             ws.textAll(getStateButton());
+            Blynk.virtualWrite(V6, LOW);
+
             // ws.textAll("011");
         }
         else if (strcmp((char *)data, "onsk2") == 0)
@@ -170,6 +189,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN2_RELAY, 1);
             Serial.println("SK 2 on");
             ws.textAll(getStateButton());
+            Blynk.virtualWrite(V7, HIGH);
+
             // ws.textAll("100");
         }
         else if (strcmp((char *)data, "offsk2") == 0)
@@ -178,6 +199,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN2_RELAY, 0);
             Serial.println("SK 2 off");
             ws.textAll(getStateButton());
+            Blynk.virtualWrite(V7, LOW);
+
             // ws.textAll("101");
         }
         else if (strcmp((char *)data, "onsk3") == 0)
@@ -186,6 +209,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN3_RELAY, 1);
             Serial.println("SK 3 on");
             ws.textAll(getStateButton());
+            Blynk.virtualWrite(V8, HIGH);
+
             // ws.textAll("110");
         }
         else if (strcmp((char *)data, "offsk3") == 0)
@@ -194,6 +219,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN3_RELAY, 0);
             Serial.println("SK 3 off");
             ws.textAll(getStateButton());
+            Blynk.virtualWrite(V8, LOW);
+
             // ws.textAll("111");
         }
         else if (strcmp((char *)data, "getBtn") == 0)
@@ -247,22 +274,16 @@ void setup()
     tft.setRotation(1);
     WELCOME_SCREEN();
     initRelayPin();
-    Serial.setDebugOutput(true);
-    // delay(3000);   // if you won't change port, you must hard restart
+    Serial.setDebugOutput(true); // debug WIFI MANAGER
     // wm.setHttpPort(8080); // set another port for WM because https://github.com/rancilio-pid/clevercoffee/issues/323
     Serial.println("\n Starting");
     pinMode(TRIGGER_PIN, INPUT);
     wm.setConfigPortalBlocking(false);
-    // std::vector<const char *> menu = {"wifi", "info", "sep", "restart", "exit"};
-    // wm.setMenu(menu);
-    // set dark theme
-    wm.setClass("invert");
+
+    wm.setClass("invert");         // set DarkTheme
     wm.setConfigPortalTimeout(60); // auto close configportal after n seconds
     bool res;
-    // res = wm.autoConnect(); // auto generated AP name from chipid
-    // res = wm.autoConnect("AutoConnectAP"); // anonymous ap
-    res = wm.autoConnect("StartConfig_WF"); // password protected ap
-
+    res = wm.autoConnect("StartConfig_WF"); // Wifi AP used to Config Wifi STA
     if (!res)
     {
         Serial.println("Failed to connect or hit timeout");
@@ -285,13 +306,18 @@ void setup()
         server.onNotFound(notFound);
         server.serveStatic("/", SPIFFS, "/");
         server.begin();
+        Blynk.config(auth, "212.237.23.244", 8181);
         screenChange = 1; // screen wifi details
         tft.fillScreen(TFT_WHITE);
+
+        // Khai báo hàm callback cho pin ảo V2
+        Blynk.virtualWrite(V5, 0); // Gửi giá trị mặc định cho widget nhập số
     }
 }
-void loop()
+void loop() //====================== MAIN PROGRAM ===================================
 {
     unsigned long currentMillis = millis();
+    Blynk.run();
     wm.process();
     checkButton();
     checkWifi_config();  // restart if reset wifi and config again
@@ -304,13 +330,13 @@ void loop()
          readPzem(); // chạy thật dụng hàm này
         // voltageValue = random(100, 260);
         // currentValue = random(0.0, 30.5);
-        // powerValue = random(100, 4000);
+        // powerValue = random(100, 1000);
         // energyValue = random(1, 100);
         // pfValue = random(0.0, 10.0);
         // freqValue = random(40.0, 50.0);
-
+        sendValue_Blynk();
         notifyClients(getDataPower());
-
+        checkAlarmPower();
         previousMillis = currentMillis;
     }
 }
@@ -594,4 +620,90 @@ void VALUE_DASHBOARD_SCREEN()
     tft.drawFloat(energyValue, 4, 65, 109);
     tft.setCursor(100, 109);
     tft.print(" kWh");
+}
+void sendValue_Blynk()
+{
+    Blynk.virtualWrite(V0, voltageValue);
+    Blynk.virtualWrite(V1, currentValue);
+    Blynk.virtualWrite(V2, powerValue);
+    Blynk.virtualWrite(V3, freqValue);
+    Blynk.virtualWrite(V4, energyValue);
+    Blynk.virtualWrite(V9, pfValue);
+}
+void resetValuePzem()
+{
+    if (digitalRead(RESET_PZEM) == LOW)
+    {
+        // poor mans debounce/press-hold, code not ideal for production
+        delay(50);
+        if (digitalRead(RESET_PZEM) == LOW)
+        {
+            Serial.println("ResetPIN Pressed");
+            // still holding button for 3000 ms, reset settings, code not ideaa for production
+            delay(3000); // reset delay hold
+            if (digitalRead(RESET_PZEM) == LOW)
+            {
+                pzem.resetEnergy();
+            }
+        }
+    }
+}
+void checkAlarmPower()
+{
+    if (pzem.getPowerAlarm() == true)
+    {
+        Serial.println("Cong suat dat nguong thong bao");
+    }
+}
+
+//==============BLYNK FUNCTION================
+BLYNK_CONNECTED()
+{
+    Serial.print("BLYNK SERVER CONNECTED !!!");
+    // Blynk.syncAll();
+    Blynk.syncVirtual(V5);
+    Blynk.syncVirtual(V6);
+    Blynk.syncVirtual(V7);
+    Blynk.syncVirtual(V8);
+}
+BLYNK_WRITE(V5)
+{
+    int value = param.asInt(); // Lấy giá trị từ widget nhập số
+    // Thực hiện các hoạt động tương ứng với giá trị nhận được
+    Serial.print("Received value: ");
+    Serial.println(value);
+    pzem.setPowerAlarm(value);
+}
+BLYNK_WRITE(V6)
+{
+    state_SK1 = param.asInt();
+    if (state_SK1)
+    {
+        digitalWrite(IN1_RELAY, HIGH);
+    }
+    else
+        digitalWrite(IN1_RELAY, LOW);
+    ws.textAll(getStateButton());
+}
+BLYNK_WRITE(V7)
+{
+    state_SK2 = param.asInt();
+    if (state_SK2)
+    {
+        digitalWrite(IN2_RELAY, HIGH);
+    }
+    else
+        digitalWrite(IN2_RELAY, LOW);
+    ws.textAll(getStateButton());
+}
+BLYNK_WRITE(V8)
+{
+    state_SK3 = param.asInt();
+    if (state_SK3)
+    {
+        digitalWrite(IN3_RELAY, HIGH);
+    }
+    else
+        digitalWrite(IN3_RELAY, LOW);
+    ws.textAll(getStateButton());
 }
