@@ -19,12 +19,15 @@
 #define PZEM_SERIAL Serial2
 #define TRIGGER_PIN 0
 #define RESET_PZEM 22
+#define NORMAL_LED 5
+#define ALARM_LED 19
 #define IN1_RELAY 12
 #define IN2_RELAY 14
 #define IN3_RELAY 27
 PZEM004Tv30 pzem(PZEM_SERIAL, PZEM_RX_PIN, PZEM_TX_PIN);
 TFT_eSPI tft = TFT_eSPI();
 // State button
+bool toggle_led = 0;
 bool mainButton = 1;
 bool state_SK1 = 0;
 bool state_SK2 = 0;
@@ -136,9 +139,9 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK2 = true;
             state_SK3 = true;
 
-            digitalWrite(IN1_RELAY, 1);
-            digitalWrite(IN2_RELAY, 1);
-            digitalWrite(IN3_RELAY, 1);
+            digitalWrite(IN1_RELAY, 0);
+            digitalWrite(IN2_RELAY, 0);
+            digitalWrite(IN3_RELAY, 0);
             Serial.println(mainButton);
             ws.textAll(getStateButton());
             Blynk.virtualWrite(V6, HIGH);
@@ -152,9 +155,9 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK1 = false;
             state_SK2 = false;
             state_SK3 = false;
-            digitalWrite(IN1_RELAY, 0);
-            digitalWrite(IN2_RELAY, 0);
-            digitalWrite(IN3_RELAY, 0);
+            digitalWrite(IN1_RELAY, 1);
+            digitalWrite(IN2_RELAY, 1);
+            digitalWrite(IN3_RELAY, 1);
             Serial.println(mainButton);
             ws.textAll(getStateButton());
             Blynk.virtualWrite(V6, LOW);
@@ -166,7 +169,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "onsk1") == 0)
         {
             state_SK1 = true;
-            digitalWrite(IN1_RELAY, 1);
+            digitalWrite(IN1_RELAY, 0);
             Serial.println("SK 1 on");
             ws.textAll(getStateButton());
             Blynk.virtualWrite(V6, HIGH);
@@ -177,7 +180,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         {
             state_SK1 = false;
             Serial.println("SK 1 off");
-            digitalWrite(IN1_RELAY, 0);
+            digitalWrite(IN1_RELAY, 1);
             ws.textAll(getStateButton());
             Blynk.virtualWrite(V6, LOW);
 
@@ -186,7 +189,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "onsk2") == 0)
         {
             state_SK2 = true;
-            digitalWrite(IN2_RELAY, 1);
+            digitalWrite(IN2_RELAY, 0);
             Serial.println("SK 2 on");
             ws.textAll(getStateButton());
             Blynk.virtualWrite(V7, HIGH);
@@ -196,7 +199,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "offsk2") == 0)
         {
             state_SK2 = false;
-            digitalWrite(IN2_RELAY, 0);
+            digitalWrite(IN2_RELAY, 1);
             Serial.println("SK 2 off");
             ws.textAll(getStateButton());
             Blynk.virtualWrite(V7, LOW);
@@ -206,7 +209,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "onsk3") == 0)
         {
             state_SK3 = true;
-            digitalWrite(IN3_RELAY, 1);
+            digitalWrite(IN3_RELAY, 0);
             Serial.println("SK 3 on");
             ws.textAll(getStateButton());
             Blynk.virtualWrite(V8, HIGH);
@@ -216,7 +219,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "offsk3") == 0)
         {
             state_SK3 = false;
-            digitalWrite(IN3_RELAY, 0);
+            digitalWrite(IN3_RELAY, 1);
             Serial.println("SK 3 off");
             ws.textAll(getStateButton());
             Blynk.virtualWrite(V8, LOW);
@@ -271,13 +274,16 @@ void setup()
     Serial.begin(115200);
 
     tft.init();
-    tft.setRotation(1);
+    tft.setRotation(0);
     WELCOME_SCREEN();
     initRelayPin();
     Serial.setDebugOutput(true); // debug WIFI MANAGER
     // wm.setHttpPort(8080); // set another port for WM because https://github.com/rancilio-pid/clevercoffee/issues/323
     Serial.println("\n Starting");
     pinMode(TRIGGER_PIN, INPUT);
+    pinMode(RESET_PZEM, INPUT_PULLUP);
+    pinMode(NORMAL_LED, OUTPUT);
+    pinMode(ALARM_LED, OUTPUT);
     wm.setConfigPortalBlocking(false);
 
     wm.setClass("invert");         // set DarkTheme
@@ -311,18 +317,23 @@ void setup()
         tft.fillScreen(TFT_WHITE);
 
         // Khai báo hàm callback cho pin ảo V2
-        Blynk.virtualWrite(V5, 0); // Gửi giá trị mặc định cho widget nhập số
+        //Blynk.virtualWrite(V5, 0); // Gửi giá trị mặc định cho widget nhập số
     }
 }
 void loop() //====================== MAIN PROGRAM ===================================
 {
     unsigned long currentMillis = millis();
-    Blynk.run();
     wm.process();
+    
     checkButton();
+    resetValuePzem();
     checkWifi_config();  // restart if reset wifi and config again
     ws.cleanupClients(); // dọn dẹp client không được sử dụng
     MainScreenChange();
+    if(WiFi.status() == WL_CONNECTED){
+        Blynk.run();
+    }
+   // Blynk.run();
 
     if (currentMillis - previousMillis >= 1500)
     {
@@ -591,7 +602,7 @@ void DASHBOARD_SCREEN()
     tft.setCursor(5, 110);
     tft.print("4. ENERGY:");
 }
-void VALUE_DASHBOARD_SCREEN()
+void VALUE_DASHBOARD_SCREEN()   // bảng các thông số điện
 {
     tft.fillRect(5, 28, 95, 20, TFT_WHITE);
     tft.fillRect(20, 58, 80, 20, TFT_WHITE);
@@ -650,9 +661,21 @@ void resetValuePzem()
 }
 void checkAlarmPower()
 {
+    //5:green
+    // 19:red
     if (pzem.getPowerAlarm() == true)
     {
-        Serial.println("Cong suat dat nguong thong bao");
+        digitalWrite(NORMAL_LED, LOW);
+        unsigned long currentMillis2 = millis();
+        
+        if (currentMillis2 - previousMillis1 >= 100)
+        {
+            toggle_led = !toggle_led;
+            digitalWrite(ALARM_LED, toggle_led );
+            previousMillis1 = currentMillis2;
+        }
+    }else{
+        digitalWrite(NORMAL_LED, HIGH);
     }
 }
 
@@ -679,10 +702,10 @@ BLYNK_WRITE(V6)
     state_SK1 = param.asInt();
     if (state_SK1)
     {
-        digitalWrite(IN1_RELAY, HIGH);
+        digitalWrite(IN1_RELAY, 0);
     }
     else
-        digitalWrite(IN1_RELAY, LOW);
+        digitalWrite(IN1_RELAY, 1);
     ws.textAll(getStateButton());
 }
 BLYNK_WRITE(V7)
@@ -690,10 +713,10 @@ BLYNK_WRITE(V7)
     state_SK2 = param.asInt();
     if (state_SK2)
     {
-        digitalWrite(IN2_RELAY, HIGH);
+        digitalWrite(IN2_RELAY, 0);
     }
     else
-        digitalWrite(IN2_RELAY, LOW);
+        digitalWrite(IN2_RELAY, 1);
     ws.textAll(getStateButton());
 }
 BLYNK_WRITE(V8)
@@ -701,9 +724,9 @@ BLYNK_WRITE(V8)
     state_SK3 = param.asInt();
     if (state_SK3)
     {
-        digitalWrite(IN3_RELAY, HIGH);
+        digitalWrite(IN3_RELAY, 0);
     }
     else
-        digitalWrite(IN3_RELAY, LOW);
+        digitalWrite(IN3_RELAY, 1);
     ws.textAll(getStateButton());
 }

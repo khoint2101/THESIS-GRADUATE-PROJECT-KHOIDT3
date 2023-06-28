@@ -6,28 +6,28 @@ const btnAll = {
     <h4>ON ALL</h4>`,
     off: `<img src="./img/offpower.png" alt="MAIN POWER OFF" width="100px" height="100px">
     <h4>OFF ALL</h4>`,
-    value: true
+    value: false
 }
 const socket1 = {
     on: `<img src="./img/socket1.png" alt="SOCKET 1 ON" width="100px" height="100px">
     <h4>SOCKET 1: ON</h4>`,
     off: `<img src="./img/socket.png" alt="SOCKET 1 OFF" width="100px" height="100px">
     <h4>SOCKET 1: OFF</h4>`,
-    value: false
+    value: true
 }
 const socket2 = {
     on: `<img src="./img/socket2.png" alt="SOCKET 2 ON" width="100px" height="100px">
     <h4>SOCKET 2: ON</h4>`,
     off: `<img src="./img/socket.png" alt="SOCKET 2 OFF" width="100px" height="100px">
     <h4>SOCKET 2: OFF</h4>`,
-    value: false
+    value: true
 }
 const socket3 = {
         on: `<img src="./img/socket3.png" alt="SOCKET 3 ON" width="100px" height="100px">
     <h4>SOCKET 3: ON</h4>`,
         off: `<img src="./img/socket.png" alt="SOCKET 3 OFF" width="100px" height="100px">
     <h4>SOCKET 3: OFF</h4>`,
-        value: false
+        value: true
     }
     //============Biến của Gauge=================
 var voltageVar; // biến của điện áp
