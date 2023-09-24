@@ -9,8 +9,14 @@
 #include <TFT_eSPI.h>
 #include <SPI.h>
 #include <WiFiClient.h>
-#include <BlynkSimpleEsp32.h>
+#include <FirebaseESP32.h>
 #include "bitmap.h"
+#include <NTPClient.h>
+#include <EEPROM.h>
+#include <WiFiUdp.h>
+
+#include "addons/TokenHelper.h" //Token Generation Firebase
+#include "addons/RTDBHelper.h"  // RTDB payload
 
 #if !defined(PZEM_RX_PIN) && !defined(PZEM_TX_PIN)
 #define PZEM_RX_PIN 16
@@ -24,8 +30,17 @@
 #define IN1_RELAY 12
 #define IN2_RELAY 14
 #define IN3_RELAY 27
+
+#define API_KEY "AIzaSyA63-WGsXRJKT3ididiQOBMETy8T1tW3qk" // replace the API key
+#define USER_EMAIL "adminhardwareauthen@gmail.com"
+#define USER_PASSWORD "12345678"
+#define DATABASE_URL "smartsocket-thesis-default-rtdb.asia-southeast1.firebasedatabase.app"
+
 PZEM004Tv30 pzem(PZEM_SERIAL, PZEM_RX_PIN, PZEM_TX_PIN);
 TFT_eSPI tft = TFT_eSPI();
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP);
+
 // State button
 bool toggle_led = 0;
 bool mainButton = 1;
@@ -34,8 +49,10 @@ bool state_SK2 = 0;
 bool state_SK3 = 0;
 bool shouldRestart = false; // flag to track if restart is needed
 byte screenChange = 0;      // switch between wifi detail and dashboard
-char auth[] = "1L3LGRGCGYD2bPsp7lOXuP2WoyiEb8rb";
-
+uint32_t chipID = 0;
+unsigned long timer_Fb;
+String chipIDstr;
+uint8_t checkNew;
 // define variable Pzem 004T
 float voltageValue;
 float currentValue;
@@ -48,14 +65,19 @@ float freqValue;
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 WiFiManager wm; // global wm instance
+FirebaseData stream;
+FirebaseData fbdo;
+FirebaseAuth auth;
+FirebaseConfig config;
 //=======FUNCTION PROTOTYPE===========
 void readPzem();
 void checkButton();
 void checkWifi_config();
 void MainScreenChange();
-void sendValue_Blynk();
 void resetValuePzem();
 void checkAlarmPower();
+void sendDataToRTDB();   // send data to RealTime Database
+void SetupControlRTDB(); // init the first time
 //-----Screen--------
 void WELCOME_SCREEN();
 void START_CONFIG_WF_SCREEN();
@@ -144,9 +166,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN3_RELAY, 0);
             Serial.println(mainButton);
             ws.textAll(getStateButton());
-            Blynk.virtualWrite(V6, HIGH);
-            Blynk.virtualWrite(V7, HIGH);
-            Blynk.virtualWrite(V8, HIGH);
             // ws.textAll("000");
         }
         else if (strcmp((char *)data, "offall") == 0)
@@ -160,9 +179,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN3_RELAY, 1);
             Serial.println(mainButton);
             ws.textAll(getStateButton());
-            Blynk.virtualWrite(V6, LOW);
-            Blynk.virtualWrite(V7, LOW);
-            Blynk.virtualWrite(V8, LOW);
 
             //  ws.textAll("001");
         }
@@ -172,7 +188,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN1_RELAY, 0);
             Serial.println("SK 1 on");
             ws.textAll(getStateButton());
-            Blynk.virtualWrite(V6, HIGH);
 
             //  ws.textAll("010");
         }
@@ -182,7 +197,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             Serial.println("SK 1 off");
             digitalWrite(IN1_RELAY, 1);
             ws.textAll(getStateButton());
-            Blynk.virtualWrite(V6, LOW);
 
             // ws.textAll("011");
         }
@@ -192,7 +206,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN2_RELAY, 0);
             Serial.println("SK 2 on");
             ws.textAll(getStateButton());
-            Blynk.virtualWrite(V7, HIGH);
 
             // ws.textAll("100");
         }
@@ -202,7 +215,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN2_RELAY, 1);
             Serial.println("SK 2 off");
             ws.textAll(getStateButton());
-            Blynk.virtualWrite(V7, LOW);
 
             // ws.textAll("101");
         }
@@ -212,7 +224,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN3_RELAY, 0);
             Serial.println("SK 3 on");
             ws.textAll(getStateButton());
-            Blynk.virtualWrite(V8, HIGH);
 
             // ws.textAll("110");
         }
@@ -222,7 +233,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             digitalWrite(IN3_RELAY, 1);
             Serial.println("SK 3 off");
             ws.textAll(getStateButton());
-            Blynk.virtualWrite(V8, LOW);
 
             // ws.textAll("111");
         }
@@ -268,11 +278,37 @@ void initRelayPin()
     pinMode(IN3_RELAY, OUTPUT);
 }
 
+void streamTimeoutCallback(bool timeout) // lang nghe su kien
+{
+    if (timeout)
+        Serial.println("stream timeout, resuming.....\n");
+    if (!stream.httpConnected())
+        Serial.printf("error code: %d, reason: %s\n\n", stream.httpCode(), stream.errorReason().c_str());
+}
+
+void initFirebase()
+{
+    config.api_key = API_KEY;
+    auth.user.email = USER_EMAIL;
+    auth.user.password = USER_PASSWORD;
+    config.database_url = DATABASE_URL;
+    config.token_status_callback = tokenStatusCallback;
+    fbdo.setBSSLBufferSize(4096, 1024);
+    Firebase.begin(&config, &auth);
+    Serial.println("Successfull Init Firebase");
+}
+
 void setup()
 {
     WiFi.mode(WIFI_STA);
     Serial.begin(115200);
-
+    EEPROM.begin(512);
+    for (int i = 0; i < 17; i = i + 8)
+    {
+        chipID |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
+    }
+    chipIDstr = String(chipID);
+    Serial.printf("Chip ID: %u\n", chipID);
     tft.init();
     tft.setRotation(0);
     WELCOME_SCREEN();
@@ -299,9 +335,10 @@ void setup()
     }
     else
     {
-        // if you get here you have connected to the WiFi   // xử lý bằng QR code
-        Serial.println("connected...yeey :)"); // Sau khi thiết lập một wifi mới sẽ bị trùng port cần khắc phục
+        // if you get here you have connected to the WiFi
+        Serial.println("connected...yeey :)");
         initFS();
+        //
         initWebSocket();
         server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
                   { request->send(SPIFFS, "/index.html", "text/html"); });
@@ -312,40 +349,41 @@ void setup()
         server.onNotFound(notFound);
         server.serveStatic("/", SPIFFS, "/");
         server.begin();
-        Blynk.config(auth, "212.237.23.244", 8181);
+        initFirebase();
+        //  Blynk.config(auth, "212.237.23.244", 8181);
+        if (EEPROM.read(500) != 1){
+            SetupControlRTDB();
+            EEPROM.write(500, 1);
+            EEPROM.commit();
+        }
+        Firebase.setString(fbdo, chipIDstr + "/dashboard/wifiinfo", (String)WiFi.SSID());
         screenChange = 1; // screen wifi details
         tft.fillScreen(TFT_WHITE);
-
-        // Khai báo hàm callback cho pin ảo V2
-        //Blynk.virtualWrite(V5, 0); // Gửi giá trị mặc định cho widget nhập số
     }
 }
 void loop() //====================== MAIN PROGRAM ===================================
 {
     unsigned long currentMillis = millis();
     wm.process();
-    
+
     checkButton();
     resetValuePzem();
     checkWifi_config();  // restart if reset wifi and config again
     ws.cleanupClients(); // dọn dẹp client không được sử dụng
     MainScreenChange();
-    if(WiFi.status() == WL_CONNECTED){
-        Blynk.run();
-    }
-   // Blynk.run();
+    sendDataToRTDB();
 
     if (currentMillis - previousMillis >= 1500)
     {
         // Thực hiện các hoạt động sau mỗi interval
-         readPzem(); // chạy thật dụng hàm này
-        // voltageValue = random(100, 260);
-        // currentValue = random(0.0, 30.5);
-        // powerValue = random(100, 1000);
-        // energyValue = random(1, 100);
-        // pfValue = random(0.0, 10.0);
-        // freqValue = random(40.0, 50.0);
-        sendValue_Blynk();
+        // readPzem(); // chạy thật dụng hàm này
+        voltageValue = random(100, 260);
+        currentValue = random(0.0, 30.5);
+        powerValue = random(100, 1000);
+        energyValue = random(1, 100);
+        pfValue = random(0.0, 10.0);
+        freqValue = random(40.0, 50.0);
+
         notifyClients(getDataPower());
         checkAlarmPower();
         previousMillis = currentMillis;
@@ -418,6 +456,7 @@ void readPzem()
     if (isnan(voltageValue))
     {
         Serial.println("Error reading voltage");
+        voltageValue = 0;
         currentValue = 0;
         powerValue = 0;
     }
@@ -482,18 +521,18 @@ void WELCOME_SCREEN() // done
 {
     tft.fillScreen(TFT_WHITE);
     tft.setTextColor(TFT_DARKGREEN, TFT_YELLOW);
-    tft.setCursor(20, 3);
+    tft.setCursor(30, 3);
     tft.setTextSize(2);
-    tft.print(" Nhom 7 ");
+    tft.print("DO AN");
     tft.setTextColor(TFT_RED);
-    tft.setCursor(25, 23);
+    tft.setCursor(5, 23);
     tft.setTextSize(2);
-    tft.print("DO AN 3");
+    tft.print("TOT NGHIEP");
     tft.setTextColor(TFT_RED);
     tft.setCursor(28, 45);
     tft.setTextSize(1);
     tft.print("SMART SOCKET");
-    tft.drawXBitmap(0, 63, socket, 64, 64, TFT_RED);
+    tft.drawXBitmap(0, 63, socket_img, 64, 64, TFT_RED);
     tft.drawXBitmap(64, 63, measure, 64, 64, TFT_DARKGREEN);
     delay(2000);
 }
@@ -602,7 +641,7 @@ void DASHBOARD_SCREEN()
     tft.setCursor(5, 110);
     tft.print("4. ENERGY:");
 }
-void VALUE_DASHBOARD_SCREEN()   // bảng các thông số điện
+void VALUE_DASHBOARD_SCREEN() // bảng các thông số điện
 {
     tft.fillRect(5, 28, 95, 20, TFT_WHITE);
     tft.fillRect(20, 58, 80, 20, TFT_WHITE);
@@ -632,15 +671,6 @@ void VALUE_DASHBOARD_SCREEN()   // bảng các thông số điện
     tft.setCursor(100, 109);
     tft.print(" kWh");
 }
-void sendValue_Blynk()
-{
-    Blynk.virtualWrite(V0, voltageValue);
-    Blynk.virtualWrite(V1, currentValue);
-    Blynk.virtualWrite(V2, powerValue);
-    Blynk.virtualWrite(V3, freqValue);
-    Blynk.virtualWrite(V4, energyValue);
-    Blynk.virtualWrite(V9, pfValue);
-}
 void resetValuePzem()
 {
     if (digitalRead(RESET_PZEM) == LOW)
@@ -661,72 +691,52 @@ void resetValuePzem()
 }
 void checkAlarmPower()
 {
-    //5:green
-    // 19:red
+    // 5:green
+    //  19:red
     if (pzem.getPowerAlarm() == true)
     {
         digitalWrite(NORMAL_LED, LOW);
         unsigned long currentMillis2 = millis();
-        
+
         if (currentMillis2 - previousMillis1 >= 100)
         {
             toggle_led = !toggle_led;
-            digitalWrite(ALARM_LED, toggle_led );
+            digitalWrite(ALARM_LED, toggle_led);
             previousMillis1 = currentMillis2;
         }
-    }else{
+    }
+    else
+    {
         digitalWrite(NORMAL_LED, HIGH);
     }
 }
 
-//==============BLYNK FUNCTION================
-BLYNK_CONNECTED()
+void sendDataToRTDB()
 {
-    Serial.print("BLYNK SERVER CONNECTED !!!");
-    // Blynk.syncAll();
-    Blynk.syncVirtual(V5);
-    Blynk.syncVirtual(V6);
-    Blynk.syncVirtual(V7);
-    Blynk.syncVirtual(V8);
-}
-BLYNK_WRITE(V5)
-{
-    int value = param.asInt(); // Lấy giá trị từ widget nhập số
-    // Thực hiện các hoạt động tương ứng với giá trị nhận được
-    Serial.print("Received value: ");
-    Serial.println(value);
-    pzem.setPowerAlarm(value);
-}
-BLYNK_WRITE(V6)
-{
-    state_SK1 = param.asInt();
-    if (state_SK1)
+    // send data every 5s to Firebase Realtime
+    if (Firebase.ready() && (unsigned long)millis() - timer_Fb >= 5000 || timer_Fb == 0)
     {
-        digitalWrite(IN1_RELAY, 0);
+        timer_Fb = millis();
+        Firebase.setFloat(fbdo, chipIDstr + "/dashboard/voltage", (float)voltageValue);
+        Firebase.setFloat(fbdo, chipIDstr + "/dashboard/current", (float)currentValue);
+        Firebase.setFloat(fbdo, chipIDstr + "/dashboard/power", (float)powerValue);
+        Firebase.setFloat(fbdo, chipIDstr + "/dashboard/pf", (float)pfValue);
+        Firebase.setFloat(fbdo, chipIDstr + "/dashboard/energy", (float)energyValue);
+        Firebase.setFloat(fbdo, chipIDstr + "/dashboard/frequency", (float)freqValue);
     }
-    else
-        digitalWrite(IN1_RELAY, 1);
-    ws.textAll(getStateButton());
 }
-BLYNK_WRITE(V7)
+void SetupControlRTDB()
 {
-    state_SK2 = param.asInt();
-    if (state_SK2)
-    {
-        digitalWrite(IN2_RELAY, 0);
-    }
-    else
-        digitalWrite(IN2_RELAY, 1);
-    ws.textAll(getStateButton());
-}
-BLYNK_WRITE(V8)
-{
-    state_SK3 = param.asInt();
-    if (state_SK3)
-    {
-        digitalWrite(IN3_RELAY, 0);
-    }
-    else
-        digitalWrite(IN3_RELAY, 1);
-    ws.textAll(getStateButton());
+    Firebase.setInt(fbdo, chipIDstr + "/control/del_state", 0);
+    Firebase.setInt(fbdo, chipIDstr + "/control/powerAlr", 2000);
+    Firebase.setInt(fbdo, chipIDstr + "/control/socket1", (int)state_SK1);
+    Firebase.setInt(fbdo, chipIDstr + "/control/socket2", (int)state_SK2);
+    Firebase.setInt(fbdo, chipIDstr + "/control/socket3", (int)state_SK3);
+    Firebase.setInt(fbdo, chipIDstr + "/control/stt_powerAlr", 0);
+    Firebase.setInt(fbdo, chipIDstr + "/control/stt_timer1", 0);
+    Firebase.setInt(fbdo, chipIDstr + "/control/stt_timer2", 0);
+    Firebase.setInt(fbdo, chipIDstr + "/control/stt_timer3", 0);
+    Firebase.setString(fbdo, chipIDstr + "/control/timer1", "0000");
+    Firebase.setString(fbdo, chipIDstr + "/control/timer2", "0000");
+    Firebase.setString(fbdo, chipIDstr + "/control/timer3", "0000");
 }
