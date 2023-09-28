@@ -54,12 +54,15 @@ bool state_SK3 = 0;
 bool shouldRestart = false; // flag to track if restart is needed
 byte screenChange = 0;      // switch between wifi detail and dashboard
 uint32_t chipID = 0;
-unsigned long timer_Fb;
+// unsigned long timer_Fb;
+String listenerPath;
 String chipIDstr;
 uint8_t checkNew;
 uint16_t counter1000 = 0, counter5000 = 0, counter7500 = 0, counter2000 = 0, counter15000 = 0;
 
 int mainHour, mainMin, hour1, min1, hour2, min2, hour3, min3;
+int delEnergyButtonState, powerAlertNumber, powerAlertStt, timerStt1, timerStt2, timerStt3;
+String timerValue1, timerValue2, timerValue3;
 
 // define variable Pzem 004T
 float voltageValue;
@@ -286,7 +289,158 @@ void initRelayPin()
     pinMode(IN2_RELAY, OUTPUT);
     pinMode(IN3_RELAY, OUTPUT);
 }
+//==================Stream Callback Firebase==================
+void streamCallback(FirebaseStream data)
+{
+    Serial.printf("stream path, %s\nevent path, %s\ndata type, %s\nevent type, %s\n\n",
+                  data.streamPath().c_str(),
+                  data.dataPath().c_str(),
+                  data.dataType().c_str(),
+                  data.eventType().c_str());
+    printResult(data);
+    Serial.println();
 
+    String streamPath = String(data.dataPath());
+    // Detect type of data
+    if (data.dataTypeEnum() == fb_esp_rtdb_data_type_integer)
+    {
+        String namePath = streamPath.substring(1);
+        Serial.print("Name Path: ");
+        Serial.println(namePath);
+        if (namePath == "socket1") // => điều khiển ổ cắm 1
+        {
+            state_SK1 = data.intData();
+            Serial.print("STATE: ");
+            Serial.println(state_SK1);
+            ws.textAll(getStateButton());
+        }
+        else if (namePath == "socket2")
+        {
+            state_SK2 = data.intData();
+            Serial.print("STATE: ");
+            Serial.println(state_SK2);
+            ws.textAll(getStateButton());
+        }
+        else if (namePath == "socket3")
+        {
+            state_SK3 = data.intData();
+            Serial.print("STATE: ");
+            Serial.println(state_SK3);
+            ws.textAll(getStateButton());
+        }
+        else if (namePath == "del_state")
+        {
+            delEnergyButtonState = data.intData();
+            Serial.print("Del STATE: ");
+            Serial.println(delEnergyButtonState);
+        }
+        else if (namePath == "powerAlr")
+        {
+            powerAlertNumber = data.intData();
+            Serial.print("Alert Number: ");
+            Serial.println(powerAlertNumber);
+        }
+        else if (namePath == "stt_powerAlr")
+        {
+            powerAlertStt = data.intData();
+            Serial.print("Alert Status: ");
+            Serial.println(powerAlertStt);
+        }
+        else if (namePath == "stt_timer1")
+        {
+            timerStt1 = data.intData();
+            Serial.print("Timer 1 STT: ");
+            Serial.println(timerStt1);
+        }
+        else if (namePath == "stt_timer2")
+        {
+            timerStt2 = data.intData();
+            Serial.print("Timer 2 STT: ");
+            Serial.println(timerStt2);
+        }
+        else if (namePath == "stt_timer3")
+        {
+            timerStt3 = data.intData();
+            Serial.print("Timer 3 STT: ");
+            Serial.println(timerStt3);
+        }
+    }
+    if (data.dataTypeEnum() == fb_esp_rtdb_data_type_string)
+    {
+        String namePath = streamPath.substring(1);
+        Serial.print("Name Path: ");
+        Serial.println(namePath);
+        if (namePath == "timer1") // => điều khiển ổ cắm 1
+        {
+            String time_str = data.stringData();
+            if (time_str.length() == 4)
+            {
+                // Lấy hai ký tự đầu tiên làm giờ
+                String hour_str = time_str.substring(0, 2);
+                hour1 = hour_str.toInt();
+
+                // Lấy hai ký tự còn lại làm phút
+                String minute_str = time_str.substring(2, 4);
+                min1 = minute_str.toInt();
+
+                Serial.print("Giờ 1: ");
+                Serial.println(hour1);
+                Serial.print("Phút 1: ");
+                Serial.println(min1);
+            }
+            else
+            {
+                Serial.println("Chuỗi không hợp lệ.");
+            }
+        }else  if (namePath == "timer2") // => điều khiển ổ cắm 1
+        {
+            String time_str = data.stringData();
+            if (time_str.length() == 4)
+            {
+                // Lấy hai ký tự đầu tiên làm giờ
+                String hour_str = time_str.substring(0, 2);
+                hour2 = hour_str.toInt();
+
+                // Lấy hai ký tự còn lại làm phút
+                String minute_str = time_str.substring(2, 4);
+                min2 = minute_str.toInt();
+
+                Serial.print("Giờ 2: ");
+                Serial.println(hour2);
+                Serial.print("Phút 2: ");
+                Serial.println(min2);
+            }
+            else
+            {
+                Serial.println("Chuỗi không hợp lệ.");
+            }
+        }else  if (namePath == "timer3") // => điều khiển ổ cắm 1
+        {
+            String time_str = data.stringData();
+            if (time_str.length() == 4)
+            {
+                // Lấy hai ký tự đầu tiên làm giờ
+                String hour_str = time_str.substring(0, 2);
+                hour3 = hour_str.toInt();
+
+                // Lấy hai ký tự còn lại làm phút
+                String minute_str = time_str.substring(2, 4);
+                min3 = minute_str.toInt();
+
+                Serial.print("Giờ 3: ");
+                Serial.println(hour3);
+                Serial.print("Phút 3: ");
+                Serial.println(min3);
+            }
+            else
+            {
+                Serial.println("Chuỗi không hợp lệ.");
+            }
+        }
+    }
+
+    Serial.printf("Received stream payload size: %d (Max. %d)\n\n", data.payloadLength(), data.maxPayloadLength());
+}
 void streamTimeoutCallback(bool timeout) // lang nghe su kien
 {
     if (timeout)
@@ -294,7 +448,7 @@ void streamTimeoutCallback(bool timeout) // lang nghe su kien
     if (!stream.httpConnected())
         Serial.printf("error code: %d, reason: %s\n\n", stream.httpCode(), stream.errorReason().c_str());
 }
-
+//======================END FIREBASE STREAM CALLBACK==================================
 void initFirebase()
 {
     Serial.printf("Firebase Client v%s\n\n", FIREBASE_CLIENT_VERSION);
@@ -304,7 +458,7 @@ void initFirebase()
     config.database_url = DATABASE_URL;
     Firebase.reconnectNetwork(false);
     config.token_status_callback = tokenStatusCallback;
-  //  config.max_token_generation_retry = 3;   
+    config.max_token_generation_retry = 5; // chu y test
     fbdo.setBSSLBufferSize(4096, 4096);
     Firebase.begin(&config, &auth);
     Serial.println("Successfull Init Firebase");
@@ -331,6 +485,7 @@ void setup()
         chipID |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
     }
     chipIDstr = String(chipID);
+    listenerPath = chipIDstr + "/control/";
     Serial.printf("Chip ID: %u\n", chipID);
     tft.init();
     tft.setRotation(0);
@@ -384,7 +539,11 @@ void setup()
             EEPROM.commit();
         }
         timerAlarmEnable(timer);
-        Serial.printf("Set String....%s\n",Firebase.RTDB.setString(&fbdo, chipIDstr + "/dashboard/wifiinfo", (String)WiFi.SSID()) ? "okSSID" : fbdo.errorReason().c_str());
+        if (!Firebase.RTDB.beginStream(&stream, listenerPath.c_str()))
+            Serial.printf("stream begin error, %s\n\n", stream.errorReason().c_str());
+        // Assign a calback function to run when it detects changes on the database
+        Firebase.RTDB.setStreamCallback(&stream, streamCallback, streamTimeoutCallback);
+        Serial.printf("Set String....%s\n", Firebase.RTDB.setString(&fbdo, chipIDstr + "/dashboard/wifiinfo", (String)WiFi.SSID()) ? "okSSID" : fbdo.errorReason().c_str());
         screenChange = 1; // screen wifi details
         tft.fillScreen(TFT_WHITE);
     }
@@ -759,11 +918,23 @@ void sendDataToRTDB()
     //     // Firebase.setFloat(fbdo, chipIDstr + "/dashboard/energy", (float)energyValue);
     //     // Firebase.setFloat(fbdo, chipIDstr + "/dashboard/frequency", (float)freqValue);
     // }
-    if (counter15000 >= 15000)
+    if (counter15000 >= 15000 && Firebase.ready())
     {
-        Serial.printf("Send Volt....%s\n",Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/voltage", (float)voltageValue) ? "ok" : fbdo.errorReason().c_str());
-        Serial.printf("Send Curr....%s\n",  Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/current", (float)currentValue) ? "ok" : fbdo.errorReason().c_str());
-        Serial.printf("Send Pwr....%s\n",Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/power", (float)powerValue) ? "ok" : fbdo.errorReason().c_str());
+        // if (Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/voltage", (float)voltageValue))
+        // {
+        //     Serial.print("Send Volt...oke");
+        // }else
+        // {
+        //     if (fbdo.errorCode())
+        //     {
+        //           Firebase.getRefreshToken();
+        //     }
+
+        // }
+
+        Serial.printf("Send Volt....%s\n", Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/voltage", (float)voltageValue) ? "ok" : fbdo.errorReason().c_str());
+        Serial.printf("Send Curr....%s\n", Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/current", (float)currentValue) ? "ok" : fbdo.errorReason().c_str());
+        Serial.printf("Send Pwr....%s\n", Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/power", (float)powerValue) ? "ok" : fbdo.errorReason().c_str());
         Serial.printf("Send Energy....%s\n", Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/energy", (float)energyValue) ? "ok" : fbdo.errorReason().c_str());
         Serial.printf("Send Pf....%s\n", Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/pf", (float)pfValue) ? "ok" : fbdo.errorReason().c_str());
         Serial.printf("Send freq....%s\n", Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/frequency", (float)freqValue) ? "ok" : fbdo.errorReason().c_str());
