@@ -9,7 +9,7 @@
 #include <TFT_eSPI.h>
 #include <SPI.h>
 #include <WiFiClient.h>
-#include <FirebaseESP32.h>
+#include <Firebase_ESP_Client.h>
 #include "bitmap.h"
 #include <NTPClient.h>
 #include <EEPROM.h>
@@ -35,11 +35,15 @@
 #define USER_EMAIL "adminhardwareauthen@gmail.com"
 #define USER_PASSWORD "12345678"
 #define DATABASE_URL "smartsocket-thesis-default-rtdb.asia-southeast1.firebasedatabase.app"
+#define DATABASE_SECRET "pzBkWea64aXi2g0kUnuxwEDUuGdj6Ft25YJcX9GP"
 
 PZEM004Tv30 pzem(PZEM_SERIAL, PZEM_RX_PIN, PZEM_TX_PIN);
 TFT_eSPI tft = TFT_eSPI();
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
+
+hw_timer_t *timer = NULL;
+portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 
 // State button
 bool toggle_led = 0;
@@ -53,6 +57,10 @@ uint32_t chipID = 0;
 unsigned long timer_Fb;
 String chipIDstr;
 uint8_t checkNew;
+uint16_t counter1000 = 0, counter5000 = 0, counter7500 = 0, counter2000 = 0, counter15000 = 0;
+
+int mainHour, mainMin, hour1, min1, hour2, min2, hour3, min3;
+
 // define variable Pzem 004T
 float voltageValue;
 float currentValue;
@@ -78,6 +86,7 @@ void resetValuePzem();
 void checkAlarmPower();
 void sendDataToRTDB();   // send data to RealTime Database
 void SetupControlRTDB(); // init the first time
+void ReadDataFromRTDB(); // read state button
 //-----Screen--------
 void WELCOME_SCREEN();
 void START_CONFIG_WF_SCREEN();
@@ -288,14 +297,28 @@ void streamTimeoutCallback(bool timeout) // lang nghe su kien
 
 void initFirebase()
 {
+    Serial.printf("Firebase Client v%s\n\n", FIREBASE_CLIENT_VERSION);
     config.api_key = API_KEY;
     auth.user.email = USER_EMAIL;
     auth.user.password = USER_PASSWORD;
     config.database_url = DATABASE_URL;
+    Firebase.reconnectNetwork(false);
     config.token_status_callback = tokenStatusCallback;
-    fbdo.setBSSLBufferSize(4096, 1024);
+  //  config.max_token_generation_retry = 3;   
+    fbdo.setBSSLBufferSize(4096, 4096);
     Firebase.begin(&config, &auth);
     Serial.println("Successfull Init Firebase");
+}
+
+void IRAM_ATTR onTimer()
+{
+    portENTER_CRITICAL_ISR(&timerMux);
+    counter1000++;
+    counter5000++;
+    counter7500++;
+    counter2000++;
+    counter15000++;
+    portEXIT_CRITICAL_ISR(&timerMux);
 }
 
 void setup()
@@ -320,6 +343,9 @@ void setup()
     pinMode(RESET_PZEM, INPUT_PULLUP);
     pinMode(NORMAL_LED, OUTPUT);
     pinMode(ALARM_LED, OUTPUT);
+    timer = timerBegin(0, 80, true);
+    timerAttachInterrupt(timer, &onTimer, true);
+    timerAlarmWrite(timer, 1000, true);
     wm.setConfigPortalBlocking(false);
 
     wm.setClass("invert");         // set DarkTheme
@@ -338,7 +364,6 @@ void setup()
         // if you get here you have connected to the WiFi
         Serial.println("connected...yeey :)");
         initFS();
-        //
         initWebSocket();
         server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
                   { request->send(SPIFFS, "/index.html", "text/html"); });
@@ -349,14 +374,17 @@ void setup()
         server.onNotFound(notFound);
         server.serveStatic("/", SPIFFS, "/");
         server.begin();
-        initFirebase();
+        // initFirebase();
         //  Blynk.config(auth, "212.237.23.244", 8181);
-        if (EEPROM.read(500) != 1){
+        initFirebase();
+        if (EEPROM.read(500) != 1)
+        {
             SetupControlRTDB();
             EEPROM.write(500, 1);
             EEPROM.commit();
         }
-        Firebase.setString(fbdo, chipIDstr + "/dashboard/wifiinfo", (String)WiFi.SSID());
+        timerAlarmEnable(timer);
+        Serial.printf("Set String....%s\n",Firebase.RTDB.setString(&fbdo, chipIDstr + "/dashboard/wifiinfo", (String)WiFi.SSID()) ? "okSSID" : fbdo.errorReason().c_str());
         screenChange = 1; // screen wifi details
         tft.fillScreen(TFT_WHITE);
     }
@@ -365,15 +393,16 @@ void loop() //====================== MAIN PROGRAM ==============================
 {
     unsigned long currentMillis = millis();
     wm.process();
-
+    uint32_t freeHeap = ESP.getFreeHeap();
+    uint32_t totalHeap = ESP.getHeapSize();
     checkButton();
     resetValuePzem();
     checkWifi_config();  // restart if reset wifi and config again
     ws.cleanupClients(); // dọn dẹp client không được sử dụng
     MainScreenChange();
-    sendDataToRTDB();
 
-    if (currentMillis - previousMillis >= 1500)
+    sendDataToRTDB();
+    if (counter2000 >= 2000)
     {
         // Thực hiện các hoạt động sau mỗi interval
         // readPzem(); // chạy thật dụng hàm này
@@ -386,7 +415,11 @@ void loop() //====================== MAIN PROGRAM ==============================
 
         notifyClients(getDataPower());
         checkAlarmPower();
-        previousMillis = currentMillis;
+        Serial.println(millis());
+        Serial.println(totalHeap);
+        Serial.print(freeHeap);
+        // ReadDataFromRTDB();
+        counter2000 = 0;
     }
 }
 void checkButton()
@@ -459,6 +492,8 @@ void readPzem()
         voltageValue = 0;
         currentValue = 0;
         powerValue = 0;
+        freqValue = 0;
+        pfValue = 0;
     }
     else if (isnan(currentValue))
     {
@@ -714,29 +749,53 @@ void checkAlarmPower()
 void sendDataToRTDB()
 {
     // send data every 5s to Firebase Realtime
-    if (Firebase.ready() && (unsigned long)millis() - timer_Fb >= 5000 || timer_Fb == 0)
+    // if ((unsigned long)millis() - timer_Fb >= 7000 || timer_Fb == 0)
+    // {
+    //     timer_Fb = millis();
+    //     Firebase.setFloat(fbdo, chipIDstr + "/dashboard/voltage", (float)voltageValue);
+    //     Firebase.setFloat(fbdo, chipIDstr + "/dashboard/current", (float)currentValue);
+    //     // Firebase.setFloat(fbdo, chipIDstr + "/dashboard/power", (float)powerValue);
+    //     // Firebase.setFloat(fbdo, chipIDstr + "/dashboard/pf", (float)pfValue);
+    //     // Firebase.setFloat(fbdo, chipIDstr + "/dashboard/energy", (float)energyValue);
+    //     // Firebase.setFloat(fbdo, chipIDstr + "/dashboard/frequency", (float)freqValue);
+    // }
+    if (counter15000 >= 15000)
     {
-        timer_Fb = millis();
-        Firebase.setFloat(fbdo, chipIDstr + "/dashboard/voltage", (float)voltageValue);
-        Firebase.setFloat(fbdo, chipIDstr + "/dashboard/current", (float)currentValue);
-        Firebase.setFloat(fbdo, chipIDstr + "/dashboard/power", (float)powerValue);
-        Firebase.setFloat(fbdo, chipIDstr + "/dashboard/pf", (float)pfValue);
-        Firebase.setFloat(fbdo, chipIDstr + "/dashboard/energy", (float)energyValue);
-        Firebase.setFloat(fbdo, chipIDstr + "/dashboard/frequency", (float)freqValue);
+        Serial.printf("Send Volt....%s\n",Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/voltage", (float)voltageValue) ? "ok" : fbdo.errorReason().c_str());
+        Serial.printf("Send Curr....%s\n",  Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/current", (float)currentValue) ? "ok" : fbdo.errorReason().c_str());
+        Serial.printf("Send Pwr....%s\n",Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/power", (float)powerValue) ? "ok" : fbdo.errorReason().c_str());
+        Serial.printf("Send Energy....%s\n", Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/energy", (float)energyValue) ? "ok" : fbdo.errorReason().c_str());
+        Serial.printf("Send Pf....%s\n", Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/pf", (float)pfValue) ? "ok" : fbdo.errorReason().c_str());
+        Serial.printf("Send freq....%s\n", Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/frequency", (float)freqValue) ? "ok" : fbdo.errorReason().c_str());
+        Serial.print("SEND DONE1");
+        counter15000 = 0;
     }
+    // if(counter7500 >= 7500){
+    //     Firebase.setFloat(fbdo, chipIDstr + "/dashboard/energy", (float)energyValue);
+    //     Firebase.setFloat(fbdo, chipIDstr + "/dashboard/pf", (float)pfValue);
+    //     Serial.print("SEND DONE2");
+    //     counter7500 = 0;
+    // }
 }
 void SetupControlRTDB()
 {
-    Firebase.setInt(fbdo, chipIDstr + "/control/del_state", 0);
-    Firebase.setInt(fbdo, chipIDstr + "/control/powerAlr", 2000);
-    Firebase.setInt(fbdo, chipIDstr + "/control/socket1", (int)state_SK1);
-    Firebase.setInt(fbdo, chipIDstr + "/control/socket2", (int)state_SK2);
-    Firebase.setInt(fbdo, chipIDstr + "/control/socket3", (int)state_SK3);
-    Firebase.setInt(fbdo, chipIDstr + "/control/stt_powerAlr", 0);
-    Firebase.setInt(fbdo, chipIDstr + "/control/stt_timer1", 0);
-    Firebase.setInt(fbdo, chipIDstr + "/control/stt_timer2", 0);
-    Firebase.setInt(fbdo, chipIDstr + "/control/stt_timer3", 0);
-    Firebase.setString(fbdo, chipIDstr + "/control/timer1", "0000");
-    Firebase.setString(fbdo, chipIDstr + "/control/timer2", "0000");
-    Firebase.setString(fbdo, chipIDstr + "/control/timer3", "0000");
+    Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/del_state", 0);
+    Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/powerAlr", 2000);
+    Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1);
+    Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2);
+    Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket3", (int)state_SK3);
+    Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/stt_powerAlr", 0);
+    Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/stt_timer1", 0);
+    Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/stt_timer2", 0);
+    Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/stt_timer3", 0);
+    Firebase.RTDB.setString(&fbdo, chipIDstr + "/control/timer1", "0000");
+    Firebase.RTDB.setString(&fbdo, chipIDstr + "/control/timer2", "0000");
+    Firebase.RTDB.setString(&fbdo, chipIDstr + "/control/timer3", "0000");
 }
+
+// void ReadDataFromRTDB()
+// { // ddang loi
+//     if (Firebase.getInt(fbdo, chipIDstr + "/control/socket1"))
+//         state_SK1 = fbdo.intData();
+//     ws.textAll(getStateButton());
+// }
