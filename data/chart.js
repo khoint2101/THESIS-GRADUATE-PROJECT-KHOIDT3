@@ -176,4 +176,4 @@ setInterval(function() {
     // batch update all chart modifications
     zingchart.exec('myChart', 'update');
 
-}, 1500);
+}, 2000);

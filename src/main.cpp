@@ -52,7 +52,9 @@ bool state_SK1 = 0;
 bool state_SK2 = 0;
 bool state_SK3 = 0;
 bool shouldRestart = false; // flag to track if restart is needed
-byte screenChange = 0;      // switch between wifi detail and dashboard
+bool send_flag_idle = true; // check idle status avoid interrupt when sending to Firebase
+bool flag_webserver_handle = false;
+byte screenChange = 0; // switch between wifi detail and dashboard
 uint32_t chipID = 0;
 // unsigned long timer_Fb;
 String listenerPath;
@@ -61,6 +63,7 @@ uint8_t checkNew;
 uint16_t counter1000 = 0, counter5000 = 0, counter7500 = 0, counter2000 = 0, counter15000 = 0;
 
 int mainHour, mainMin, hour1, min1, hour2, min2, hour3, min3;
+int flag_webserver_socket_name = 0;
 int delEnergyButtonState, powerAlertNumber, powerAlertStt, timerStt1, timerStt2, timerStt3;
 String timerValue1, timerValue2, timerValue3;
 
@@ -89,7 +92,9 @@ void resetValuePzem();
 void checkAlarmPower();
 void sendDataToRTDB();   // send data to RealTime Database
 void SetupControlRTDB(); // init the first time
-void ReadDataFromRTDB(); // read state button
+void SetOffAlarm();
+void ControlRelay();
+void StringToTimeConvert(String time_str, int *hour, int *min);
 //-----Screen--------
 void WELCOME_SCREEN();
 void START_CONFIG_WF_SCREEN();
@@ -173,9 +178,9 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK2 = true;
             state_SK3 = true;
 
-            digitalWrite(IN1_RELAY, 0);
-            digitalWrite(IN2_RELAY, 0);
-            digitalWrite(IN3_RELAY, 0);
+            digitalWrite(IN1_RELAY, state_SK1);
+            digitalWrite(IN2_RELAY, state_SK2);
+            digitalWrite(IN3_RELAY, state_SK3);
             Serial.println(mainButton);
             ws.textAll(getStateButton());
             // ws.textAll("000");
@@ -186,9 +191,9 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK1 = false;
             state_SK2 = false;
             state_SK3 = false;
-            digitalWrite(IN1_RELAY, 1);
-            digitalWrite(IN2_RELAY, 1);
-            digitalWrite(IN3_RELAY, 1);
+            digitalWrite(IN1_RELAY, state_SK1);
+            digitalWrite(IN2_RELAY, state_SK2);
+            digitalWrite(IN3_RELAY, state_SK3);
             Serial.println(mainButton);
             ws.textAll(getStateButton());
 
@@ -197,7 +202,11 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "onsk1") == 0)
         {
             state_SK1 = true;
-            digitalWrite(IN1_RELAY, 0);
+            flag_webserver_handle = true;
+            flag_webserver_socket_name = 1;
+            // digitalWrite(IN1_RELAY, state_SK1);
+            //  if (send_flag_idle == true)
+            //      Serial.printf("Send SK1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
             Serial.println("SK 1 on");
             ws.textAll(getStateButton());
 
@@ -206,8 +215,12 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "offsk1") == 0)
         {
             state_SK1 = false;
+            flag_webserver_handle = true;
+            flag_webserver_socket_name = 1;
             Serial.println("SK 1 off");
-            digitalWrite(IN1_RELAY, 1);
+            // digitalWrite(IN1_RELAY, state_SK1);
+            // if (send_flag_idle == true)
+            //     Serial.printf("Send sk1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
             ws.textAll(getStateButton());
 
             // ws.textAll("011");
@@ -215,7 +228,11 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "onsk2") == 0)
         {
             state_SK2 = true;
-            digitalWrite(IN2_RELAY, 0);
+            flag_webserver_handle = true;
+            flag_webserver_socket_name = 2;
+            // digitalWrite(IN2_RELAY, state_SK2);
+            // if (send_flag_idle == true)
+            //     Serial.printf("Send sk2....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2) ? "ok" : fbdo.errorReason().c_str());
             Serial.println("SK 2 on");
             ws.textAll(getStateButton());
 
@@ -224,8 +241,12 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "offsk2") == 0)
         {
             state_SK2 = false;
-            digitalWrite(IN2_RELAY, 1);
-            Serial.println("SK 2 off");
+            flag_webserver_handle = true;
+            flag_webserver_socket_name = 2;
+            // digitalWrite(IN2_RELAY, state_SK2);
+            // if (send_flag_idle == true)
+            //     Serial.printf("Send sk2....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2) ? "ok" : fbdo.errorReason().c_str());
+            // Serial.println("SK 2 off");
             ws.textAll(getStateButton());
 
             // ws.textAll("101");
@@ -233,8 +254,12 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "onsk3") == 0)
         {
             state_SK3 = true;
-            digitalWrite(IN3_RELAY, 0);
-            Serial.println("SK 3 on");
+            flag_webserver_handle = true;
+            flag_webserver_socket_name = 3;
+            // digitalWrite(IN3_RELAY, state_SK3);
+            // if (send_flag_idle == true)
+            //     Serial.printf("Send sk3....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket3", (int)state_SK3) ? "ok" : fbdo.errorReason().c_str());
+            // Serial.println("SK 3 on");
             ws.textAll(getStateButton());
 
             // ws.textAll("110");
@@ -242,8 +267,12 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         else if (strcmp((char *)data, "offsk3") == 0)
         {
             state_SK3 = false;
-            digitalWrite(IN3_RELAY, 1);
-            Serial.println("SK 3 off");
+            flag_webserver_handle = true;
+            flag_webserver_socket_name = 3;
+            // digitalWrite(IN3_RELAY, state_SK3);
+            // if (send_flag_idle == true)
+            //     Serial.printf("Send sk3....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket3", (int)state_SK3) ? "ok" : fbdo.errorReason().c_str());
+            // Serial.println("SK 3 off");
             ws.textAll(getStateButton());
 
             // ws.textAll("111");
@@ -312,6 +341,7 @@ void streamCallback(FirebaseStream data)
             state_SK1 = data.intData();
             Serial.print("STATE: ");
             Serial.println(state_SK1);
+            //digitalWrite(IN1_RELAY, state_SK1);
             ws.textAll(getStateButton());
         }
         else if (namePath == "socket2")
@@ -319,6 +349,7 @@ void streamCallback(FirebaseStream data)
             state_SK2 = data.intData();
             Serial.print("STATE: ");
             Serial.println(state_SK2);
+//digitalWrite(IN2_RELAY, state_SK2);
             ws.textAll(getStateButton());
         }
         else if (namePath == "socket3")
@@ -326,6 +357,7 @@ void streamCallback(FirebaseStream data)
             state_SK3 = data.intData();
             Serial.print("STATE: ");
             Serial.println(state_SK3);
+//digitalWrite(IN3_RELAY, state_SK3);
             ws.textAll(getStateButton());
         }
         else if (namePath == "del_state")
@@ -370,75 +402,103 @@ void streamCallback(FirebaseStream data)
         String namePath = streamPath.substring(1);
         Serial.print("Name Path: ");
         Serial.println(namePath);
-        if (namePath == "timer1") // => điều khiển ổ cắm 1
+        if (namePath == "timer1") // => set poweroff timer socket1
         {
             String time_str = data.stringData();
-            if (time_str.length() == 4)
-            {
-                // Lấy hai ký tự đầu tiên làm giờ
-                String hour_str = time_str.substring(0, 2);
-                hour1 = hour_str.toInt();
-
-                // Lấy hai ký tự còn lại làm phút
-                String minute_str = time_str.substring(2, 4);
-                min1 = minute_str.toInt();
-
-                Serial.print("Giờ 1: ");
-                Serial.println(hour1);
-                Serial.print("Phút 1: ");
-                Serial.println(min1);
-            }
-            else
-            {
-                Serial.println("Chuỗi không hợp lệ.");
-            }
-        }else  if (namePath == "timer2") // => điều khiển ổ cắm 1
+            StringToTimeConvert(time_str, &hour1, &min1);
+            Serial.print("Giờ 1: ");
+            Serial.println(hour1);
+            Serial.print("Phút 1: ");
+            Serial.println(min1);
+        }
+        else if (namePath == "timer2") // => set poweroff timer socket2
         {
             String time_str = data.stringData();
-            if (time_str.length() == 4)
-            {
-                // Lấy hai ký tự đầu tiên làm giờ
-                String hour_str = time_str.substring(0, 2);
-                hour2 = hour_str.toInt();
-
-                // Lấy hai ký tự còn lại làm phút
-                String minute_str = time_str.substring(2, 4);
-                min2 = minute_str.toInt();
-
-                Serial.print("Giờ 2: ");
-                Serial.println(hour2);
-                Serial.print("Phút 2: ");
-                Serial.println(min2);
-            }
-            else
-            {
-                Serial.println("Chuỗi không hợp lệ.");
-            }
-        }else  if (namePath == "timer3") // => điều khiển ổ cắm 1
+            StringToTimeConvert(time_str, &hour2, &min2);
+            Serial.print("Giờ 2: ");
+            Serial.println(hour2);
+            Serial.print("Phút 2: ");
+            Serial.println(min2);
+        }
+        else if (namePath == "timer3") // => set poweroff timer socket3
         {
             String time_str = data.stringData();
-            if (time_str.length() == 4)
-            {
-                // Lấy hai ký tự đầu tiên làm giờ
-                String hour_str = time_str.substring(0, 2);
-                hour3 = hour_str.toInt();
-
-                // Lấy hai ký tự còn lại làm phút
-                String minute_str = time_str.substring(2, 4);
-                min3 = minute_str.toInt();
-
-                Serial.print("Giờ 3: ");
-                Serial.println(hour3);
-                Serial.print("Phút 3: ");
-                Serial.println(min3);
-            }
-            else
-            {
-                Serial.println("Chuỗi không hợp lệ.");
-            }
+            StringToTimeConvert(time_str, &hour3, &min3);
+            Serial.print("Giờ 3: ");
+            Serial.println(hour3);
+            Serial.print("Phút 3: ");
+            Serial.println(min3);
         }
     }
 
+    FirebaseJson json = data.to<FirebaseJson>();
+    size_t count_arr_json = json.iteratorBegin();
+    for (size_t i = 0; i < count_arr_json; i++)
+    {
+        FirebaseJson::IteratorValue value = json.valueAt(i);
+        if (i == 0)
+        {
+            delEnergyButtonState = value.value.toInt();
+            Serial.printf("Del STT JSON = %d", delEnergyButtonState);
+        }
+        else if (i == 1)
+        {
+            powerAlertNumber = value.value.toInt();
+        }
+        else if (i == 2)
+        {
+            state_SK1 = value.value.toInt();
+        }
+        else if (i == 3)
+        {
+            state_SK2 = value.value.toInt();
+        }
+        else if (i == 4)
+        {
+            state_SK3 = value.value.toInt();
+        }
+        else if (i == 5)
+        {
+            powerAlertStt = value.value.toInt();
+        }
+        else if (i == 6)
+        {
+            timerStt1 = value.value.toInt();
+        }
+        else if (i == 7)
+        {
+            timerStt2 = value.value.toInt();
+        }
+        else if (i == 8)
+        {
+            timerStt3 = value.value.toInt();
+        }
+        else if (i == 9)
+        {
+            String raw_str = value.value;
+            String time_str = raw_str.substring(1, 5);
+            StringToTimeConvert(time_str, &hour1, &min1);
+            Serial.print("Chuoi: ");
+            Serial.println(time_str);
+            Serial.print("Gio 1: ");
+            Serial.println(hour1);
+            Serial.print("Phút 1: ");
+            Serial.println(min1);
+        }
+        else if (i == 10)
+        {
+            String raw_str = value.value;
+            String time_str = raw_str.substring(1, 5);
+            StringToTimeConvert(time_str, &hour2, &min2);
+        }
+        else if (i == 11)
+        {
+            String raw_str = value.value;
+            String time_str = raw_str.substring(1, 5);
+            StringToTimeConvert(time_str, &hour3, &min3);
+        }
+    }
+    json.iteratorEnd(); // required for free the used memory in iteration (note data collection)
     Serial.printf("Received stream payload size: %d (Max. %d)\n\n", data.payloadLength(), data.maxPayloadLength());
 }
 void streamTimeoutCallback(bool timeout) // lang nghe su kien
@@ -461,6 +521,8 @@ void initFirebase()
     config.max_token_generation_retry = 5; // chu y test
     fbdo.setBSSLBufferSize(4096, 4096);
     Firebase.begin(&config, &auth);
+    config.timeout.socketConnection = 10 * 1000;
+    config.tcp_data_sending_retry = 1; // The function that starting the new TCP session
     Serial.println("Successfull Init Firebase");
 }
 
@@ -498,11 +560,12 @@ void setup()
     pinMode(RESET_PZEM, INPUT_PULLUP);
     pinMode(NORMAL_LED, OUTPUT);
     pinMode(ALARM_LED, OUTPUT);
+
     timer = timerBegin(0, 80, true);
     timerAttachInterrupt(timer, &onTimer, true);
     timerAlarmWrite(timer, 1000, true);
-    wm.setConfigPortalBlocking(false);
 
+    wm.setConfigPortalBlocking(false);
     wm.setClass("invert");         // set DarkTheme
     wm.setConfigPortalTimeout(60); // auto close configportal after n seconds
     bool res;
@@ -550,16 +613,15 @@ void setup()
 }
 void loop() //====================== MAIN PROGRAM ===================================
 {
-    unsigned long currentMillis = millis();
     wm.process();
     uint32_t freeHeap = ESP.getFreeHeap();
     uint32_t totalHeap = ESP.getHeapSize();
     checkButton();
+    ControlRelay();
     resetValuePzem();
     checkWifi_config();  // restart if reset wifi and config again
     ws.cleanupClients(); // dọn dẹp client không được sử dụng
     MainScreenChange();
-
     sendDataToRTDB();
     if (counter2000 >= 2000)
     {
@@ -882,6 +944,11 @@ void resetValuePzem()
             }
         }
     }
+    if (delEnergyButtonState == 10)
+    {
+        pzem.resetEnergy();
+        Serial.printf("Send del_state....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/del_state", (int)0) ? "ok" : fbdo.errorReason().c_str()); // new
+    }
 }
 void checkAlarmPower()
 {
@@ -920,18 +987,8 @@ void sendDataToRTDB()
     // }
     if (counter15000 >= 15000 && Firebase.ready())
     {
-        // if (Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/voltage", (float)voltageValue))
-        // {
-        //     Serial.print("Send Volt...oke");
-        // }else
-        // {
-        //     if (fbdo.errorCode())
-        //     {
-        //           Firebase.getRefreshToken();
-        //     }
 
-        // }
-
+        send_flag_idle = false;
         Serial.printf("Send Volt....%s\n", Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/voltage", (float)voltageValue) ? "ok" : fbdo.errorReason().c_str());
         Serial.printf("Send Curr....%s\n", Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/current", (float)currentValue) ? "ok" : fbdo.errorReason().c_str());
         Serial.printf("Send Pwr....%s\n", Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/power", (float)powerValue) ? "ok" : fbdo.errorReason().c_str());
@@ -940,13 +997,8 @@ void sendDataToRTDB()
         Serial.printf("Send freq....%s\n", Firebase.RTDB.setFloat(&fbdo, chipIDstr + "/dashboard/frequency", (float)freqValue) ? "ok" : fbdo.errorReason().c_str());
         Serial.print("SEND DONE1");
         counter15000 = 0;
+        send_flag_idle = true;
     }
-    // if(counter7500 >= 7500){
-    //     Firebase.setFloat(fbdo, chipIDstr + "/dashboard/energy", (float)energyValue);
-    //     Firebase.setFloat(fbdo, chipIDstr + "/dashboard/pf", (float)pfValue);
-    //     Serial.print("SEND DONE2");
-    //     counter7500 = 0;
-    // }
 }
 void SetupControlRTDB()
 {
@@ -963,10 +1015,45 @@ void SetupControlRTDB()
     Firebase.RTDB.setString(&fbdo, chipIDstr + "/control/timer2", "0000");
     Firebase.RTDB.setString(&fbdo, chipIDstr + "/control/timer3", "0000");
 }
+void ControlRelay()
+{
+    digitalWrite(IN1_RELAY,state_SK1);
+    digitalWrite(IN2_RELAY,state_SK2);
+    digitalWrite(IN3_RELAY,state_SK3);
+    if (flag_webserver_handle == true && flag_webserver_socket_name == 1)
+    {
+        Serial.printf("Send SK1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
+        flag_webserver_handle = false;
+        flag_webserver_socket_name = 0;
+    }else if (flag_webserver_handle == true && flag_webserver_socket_name == 2)
+    {
+        Serial.printf("Send SK2....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2) ? "ok" : fbdo.errorReason().c_str());
+        flag_webserver_handle = false;
+        flag_webserver_socket_name = 0;
+    }else if (flag_webserver_handle == true && flag_webserver_socket_name == 3)
+    {
+        Serial.printf("Send SK3....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket3", (int)state_SK3) ? "ok" : fbdo.errorReason().c_str());
+        flag_webserver_handle = false;
+        flag_webserver_socket_name = 0;
+    }
+}
+void SetOffAlarm()
+{
+}
+void StringToTimeConvert(String time_str, int *hour, int *min)
+{
+    if (time_str.length() == 4)
+    {
+        // Lấy hai ký tự đầu tiên làm giờ
+        String hour_str = time_str.substring(0, 2);
+        *hour = hour_str.toInt();
 
-// void ReadDataFromRTDB()
-// { // ddang loi
-//     if (Firebase.getInt(fbdo, chipIDstr + "/control/socket1"))
-//         state_SK1 = fbdo.intData();
-//     ws.textAll(getStateButton());
-// }
+        // Lấy hai ký tự còn lại làm phút
+        String minute_str = time_str.substring(2, 4);
+        *min = minute_str.toInt();
+    }
+    else
+    {
+        Serial.println("Chuỗi không hợp lệ.");
+    }
+}
