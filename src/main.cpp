@@ -39,10 +39,11 @@
 
 PZEM004Tv30 pzem(PZEM_SERIAL, PZEM_RX_PIN, PZEM_TX_PIN);
 TFT_eSPI tft = TFT_eSPI();
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP);
 
-hw_timer_t *timer = NULL;
+WiFiUDP ntpUDP; // get time from Internet
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 7 * 3600, 60000);
+
+hw_timer_t *timer = NULL; // timer interrupt
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 
 // State button
@@ -62,7 +63,7 @@ String chipIDstr;
 uint8_t checkNew;
 uint16_t counter1000 = 0, counter5000 = 0, counter7500 = 0, counter2000 = 0, counter15000 = 0;
 
-int mainHour, mainMin, hour1, min1, hour2, min2, hour3, min3;
+int mainHour, mainMin, mainSec, hour1, min1, hour2, min2, hour3, min3, sec1 = 0, sec2 = 0, sec3 = 0;
 int flag_webserver_socket_name = 0;
 int delEnergyButtonState, powerAlertNumber, powerAlertStt, timerStt1, timerStt2, timerStt3;
 String timerValue1, timerValue2, timerValue3;
@@ -95,6 +96,7 @@ void SetupControlRTDB(); // init the first time
 void SetOffAlarm();
 void ControlRelay();
 void StringToTimeConvert(String time_str, int *hour, int *min);
+bool CompareTime(int hourNTP, int minNTP, int secNTP, int hourSetup, int minSetup, int secSetup);
 //-----Screen--------
 void WELCOME_SCREEN();
 void START_CONFIG_WF_SCREEN();
@@ -341,7 +343,7 @@ void streamCallback(FirebaseStream data)
             state_SK1 = data.intData();
             Serial.print("STATE: ");
             Serial.println(state_SK1);
-            //digitalWrite(IN1_RELAY, state_SK1);
+            // digitalWrite(IN1_RELAY, state_SK1);
             ws.textAll(getStateButton());
         }
         else if (namePath == "socket2")
@@ -349,7 +351,7 @@ void streamCallback(FirebaseStream data)
             state_SK2 = data.intData();
             Serial.print("STATE: ");
             Serial.println(state_SK2);
-//digitalWrite(IN2_RELAY, state_SK2);
+            // digitalWrite(IN2_RELAY, state_SK2);
             ws.textAll(getStateButton());
         }
         else if (namePath == "socket3")
@@ -357,7 +359,7 @@ void streamCallback(FirebaseStream data)
             state_SK3 = data.intData();
             Serial.print("STATE: ");
             Serial.println(state_SK3);
-//digitalWrite(IN3_RELAY, state_SK3);
+            // digitalWrite(IN3_RELAY, state_SK3);
             ws.textAll(getStateButton());
         }
         else if (namePath == "del_state")
@@ -595,6 +597,7 @@ void setup()
         // initFirebase();
         //  Blynk.config(auth, "212.237.23.244", 8181);
         initFirebase();
+        timeClient.begin();
         if (EEPROM.read(500) != 1)
         {
             SetupControlRTDB();
@@ -614,9 +617,11 @@ void setup()
 void loop() //====================== MAIN PROGRAM ===================================
 {
     wm.process();
+    timeClient.update();
     uint32_t freeHeap = ESP.getFreeHeap();
     uint32_t totalHeap = ESP.getHeapSize();
     checkButton();
+    SetOffAlarm();
     ControlRelay();
     resetValuePzem();
     checkWifi_config();  // restart if reset wifi and config again
@@ -633,12 +638,15 @@ void loop() //====================== MAIN PROGRAM ==============================
         energyValue = random(1, 100);
         pfValue = random(0.0, 10.0);
         freqValue = random(40.0, 50.0);
-
+        mainHour = timeClient.getHours();
+        mainMin = timeClient.getMinutes();
+        mainSec = timeClient.getSeconds();
         notifyClients(getDataPower());
         checkAlarmPower();
         Serial.println(millis());
         Serial.println(totalHeap);
-        Serial.print(freeHeap);
+        Serial.println(freeHeap);
+        Serial.println(timeClient.getFormattedTime());
         // ReadDataFromRTDB();
         counter2000 = 0;
     }
@@ -950,7 +958,7 @@ void resetValuePzem()
         Serial.printf("Send del_state....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/del_state", (int)0) ? "ok" : fbdo.errorReason().c_str()); // new
     }
 }
-void checkAlarmPower()
+void checkAlarmPower() // errorr
 {
     // 5:green
     //  19:red
@@ -1017,20 +1025,22 @@ void SetupControlRTDB()
 }
 void ControlRelay()
 {
-    digitalWrite(IN1_RELAY,state_SK1);
-    digitalWrite(IN2_RELAY,state_SK2);
-    digitalWrite(IN3_RELAY,state_SK3);
+    digitalWrite(IN1_RELAY, state_SK1);
+    digitalWrite(IN2_RELAY, state_SK2);
+    digitalWrite(IN3_RELAY, state_SK3);
     if (flag_webserver_handle == true && flag_webserver_socket_name == 1)
     {
         Serial.printf("Send SK1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
         flag_webserver_handle = false;
         flag_webserver_socket_name = 0;
-    }else if (flag_webserver_handle == true && flag_webserver_socket_name == 2)
+    }
+    else if (flag_webserver_handle == true && flag_webserver_socket_name == 2)
     {
         Serial.printf("Send SK2....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2) ? "ok" : fbdo.errorReason().c_str());
         flag_webserver_handle = false;
         flag_webserver_socket_name = 0;
-    }else if (flag_webserver_handle == true && flag_webserver_socket_name == 3)
+    }
+    else if (flag_webserver_handle == true && flag_webserver_socket_name == 3)
     {
         Serial.printf("Send SK3....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket3", (int)state_SK3) ? "ok" : fbdo.errorReason().c_str());
         flag_webserver_handle = false;
@@ -1039,6 +1049,27 @@ void ControlRelay()
 }
 void SetOffAlarm()
 {
+    if (timerStt1 == 1 && CompareTime(mainHour, mainMin, mainSec, hour1, min1, sec1) == true && state_SK1 == true)
+    {
+        state_SK1 = false;
+        flag_webserver_handle = true; 
+        flag_webserver_socket_name = 1;
+        ws.textAll(getStateButton());
+    }
+    else if (timerStt2 == 1 && CompareTime(mainHour, mainMin, mainSec, hour2, min2, sec2) == true && state_SK2 == true)
+    {
+        state_SK2 = false;
+        flag_webserver_handle = true; 
+        flag_webserver_socket_name = 2;
+        ws.textAll(getStateButton());
+    }
+    else if (timerStt3 == 1 && CompareTime(mainHour, mainMin, mainSec, hour3, min3, sec3) == true && state_SK3 == true)
+    {
+        state_SK3 = false;
+        flag_webserver_handle = true; 
+        flag_webserver_socket_name = 3;
+        ws.textAll(getStateButton());
+    }
 }
 void StringToTimeConvert(String time_str, int *hour, int *min)
 {
@@ -1056,4 +1087,13 @@ void StringToTimeConvert(String time_str, int *hour, int *min)
     {
         Serial.println("Chuỗi không hợp lệ.");
     }
+}
+
+bool CompareTime(int hourNTP, int minNTP, int secNTP, int hourSetup, int minSetup, int secSetup)
+{
+    if (hourNTP == hourSetup && minNTP == minSetup && (secNTP - secSetup) >=0  && (secNTP - secSetup) <5)
+    {
+        return true;
+    }
+    return false;
 }
