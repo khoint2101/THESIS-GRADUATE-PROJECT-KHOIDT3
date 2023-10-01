@@ -180,9 +180,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK2 = true;
             state_SK3 = true;
 
-            digitalWrite(IN1_RELAY, state_SK1);
-            digitalWrite(IN2_RELAY, state_SK2);
-            digitalWrite(IN3_RELAY, state_SK3);
+            flag_webserver_handle = true;
+            flag_webserver_socket_name = 0;
             Serial.println(mainButton);
             ws.textAll(getStateButton());
             // ws.textAll("000");
@@ -193,9 +192,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK1 = false;
             state_SK2 = false;
             state_SK3 = false;
-            digitalWrite(IN1_RELAY, state_SK1);
-            digitalWrite(IN2_RELAY, state_SK2);
-            digitalWrite(IN3_RELAY, state_SK3);
+            flag_webserver_handle = true;
+            flag_webserver_socket_name = 0;
             Serial.println(mainButton);
             ws.textAll(getStateButton());
 
@@ -1028,7 +1026,15 @@ void ControlRelay()
     digitalWrite(IN1_RELAY, state_SK1);
     digitalWrite(IN2_RELAY, state_SK2);
     digitalWrite(IN3_RELAY, state_SK3);
-    if (flag_webserver_handle == true && flag_webserver_socket_name == 1)
+    if (flag_webserver_handle == true && flag_webserver_socket_name == 0)
+    {
+        Serial.printf("Send SK1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
+        Serial.printf("Send SK2....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2) ? "ok" : fbdo.errorReason().c_str());
+        Serial.printf("Send SK3....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket3", (int)state_SK3) ? "ok" : fbdo.errorReason().c_str());
+        flag_webserver_handle = false;
+        flag_webserver_socket_name = 0;
+    }
+    else if (flag_webserver_handle == true && flag_webserver_socket_name == 1)
     {
         Serial.printf("Send SK1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
         flag_webserver_handle = false;
@@ -1052,21 +1058,21 @@ void SetOffAlarm()
     if (timerStt1 == 1 && CompareTime(mainHour, mainMin, mainSec, hour1, min1, sec1) == true && state_SK1 == true)
     {
         state_SK1 = false;
-        flag_webserver_handle = true; 
+        flag_webserver_handle = true;
         flag_webserver_socket_name = 1;
         ws.textAll(getStateButton());
     }
     else if (timerStt2 == 1 && CompareTime(mainHour, mainMin, mainSec, hour2, min2, sec2) == true && state_SK2 == true)
     {
         state_SK2 = false;
-        flag_webserver_handle = true; 
+        flag_webserver_handle = true;
         flag_webserver_socket_name = 2;
         ws.textAll(getStateButton());
     }
     else if (timerStt3 == 1 && CompareTime(mainHour, mainMin, mainSec, hour3, min3, sec3) == true && state_SK3 == true)
     {
         state_SK3 = false;
-        flag_webserver_handle = true; 
+        flag_webserver_handle = true;
         flag_webserver_socket_name = 3;
         ws.textAll(getStateButton());
     }
@@ -1091,7 +1097,7 @@ void StringToTimeConvert(String time_str, int *hour, int *min)
 
 bool CompareTime(int hourNTP, int minNTP, int secNTP, int hourSetup, int minSetup, int secSetup)
 {
-    if (hourNTP == hourSetup && minNTP == minSetup && (secNTP - secSetup) >=0  && (secNTP - secSetup) <5)
+    if (hourNTP == hourSetup && minNTP == minSetup && (secNTP - secSetup) >= 0 && (secNTP - secSetup) < 5)
     {
         return true;
     }
