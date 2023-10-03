@@ -26,6 +26,7 @@
 #define TRIGGER_PIN 0
 #define RESET_PZEM 22
 #define NORMAL_LED 5
+#define IDLE_LED 25
 #define ALARM_LED 19
 #define IN1_RELAY 12
 #define IN2_RELAY 14
@@ -55,6 +56,7 @@ bool state_SK3 = 0;
 bool shouldRestart = false; // flag to track if restart is needed
 bool send_flag_idle = true; // check idle status avoid interrupt when sending to Firebase
 bool flag_webserver_handle = false;
+bool led_alert = 0;
 byte screenChange = 0; // switch between wifi detail and dashboard
 uint32_t chipID = 0;
 // unsigned long timer_Fb;
@@ -369,6 +371,7 @@ void streamCallback(FirebaseStream data)
         else if (namePath == "powerAlr")
         {
             powerAlertNumber = data.intData();
+            pzem.setPowerAlarm(powerAlertNumber);
             Serial.print("Alert Number: ");
             Serial.println(powerAlertNumber);
         }
@@ -559,6 +562,7 @@ void setup()
     pinMode(TRIGGER_PIN, INPUT);
     pinMode(RESET_PZEM, INPUT_PULLUP);
     pinMode(NORMAL_LED, OUTPUT);
+    pinMode(IDLE_LED,OUTPUT);
     pinMode(ALARM_LED, OUTPUT);
 
     timer = timerBegin(0, 80, true);
@@ -622,25 +626,28 @@ void loop() //====================== MAIN PROGRAM ==============================
     SetOffAlarm();
     ControlRelay();
     resetValuePzem();
-    checkWifi_config();  // restart if reset wifi and config again
+    checkWifi_config(); // restart if reset wifi and config again
+    checkAlarmPower();
     ws.cleanupClients(); // dọn dẹp client không được sử dụng
     MainScreenChange();
     sendDataToRTDB();
+
     if (counter2000 >= 2000)
     {
         // Thực hiện các hoạt động sau mỗi interval
-        // readPzem(); // chạy thật dụng hàm này
+       // readPzem(); // chạy thật dụng hàm này
         voltageValue = random(100, 260);
         currentValue = random(0.0, 30.5);
         powerValue = random(100, 1000);
         energyValue = random(1, 100);
         pfValue = random(0.0, 10.0);
         freqValue = random(40.0, 50.0);
+        
         mainHour = timeClient.getHours();
         mainMin = timeClient.getMinutes();
         mainSec = timeClient.getSeconds();
         notifyClients(getDataPower());
-        checkAlarmPower();
+
         Serial.println(millis());
         Serial.println(totalHeap);
         Serial.println(freeHeap);
@@ -960,22 +967,24 @@ void checkAlarmPower() // errorr
 {
     // 5:green
     //  19:red
-    if (pzem.getPowerAlarm() == true)
+    if (powerAlertStt == 1 && powerValue >= powerAlertNumber )
     {
         digitalWrite(NORMAL_LED, LOW);
-        unsigned long currentMillis2 = millis();
-
-        if (currentMillis2 - previousMillis1 >= 100)
-        {
-            toggle_led = !toggle_led;
-            digitalWrite(ALARM_LED, toggle_led);
-            previousMillis1 = currentMillis2;
-        }
+        digitalWrite(ALARM_LED, HIGH);
+        digitalWrite(IDLE_LED,LOW);
     }
-    else
+    else if (powerAlertStt == 1 && powerValue < powerAlertNumber)
     {
+        digitalWrite(ALARM_LED, LOW);
         digitalWrite(NORMAL_LED, HIGH);
+        digitalWrite(IDLE_LED,LOW);
+    }else if (powerAlertStt == 0)
+    {
+       digitalWrite(ALARM_LED, LOW);
+        digitalWrite(NORMAL_LED, LOW);
+        digitalWrite(IDLE_LED,HIGH);
     }
+    
 }
 
 void sendDataToRTDB()
