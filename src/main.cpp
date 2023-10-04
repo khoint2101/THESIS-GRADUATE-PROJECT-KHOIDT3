@@ -600,7 +600,7 @@ void setup()
         // Assign a calback function to run when it detects changes on the database
         Firebase.RTDB.setStreamCallback(&stream, streamCallback, streamTimeoutCallback);
         Serial.printf("Set String....%s\n", Firebase.RTDB.setString(&fbdo, chipIDstr + "/dashboard/wifiinfo", (String)WiFi.SSID()) ? "okSSID" : fbdo.errorReason().c_str());
-        screenChange = 2; // screen wifi details
+        screenChange = 1; // screen wifi details
         tft.fillScreen(TFT_WHITE);
     }
 }
@@ -915,19 +915,47 @@ void TIME_UID_SCREEN()
     tft.setCursor(20, 32);
     tft.print(chipIDstr);
     tft.setTextSize(1);
-    tft.setCursor(5, 54);
+    tft.setCursor(5, 50);
     tft.setTextColor(TFT_BLUE);
     tft.print("2. CLOCK:");
+    tft.setTextSize(1);
+    tft.setCursor(10, 98);
+    tft.setTextColor(TFT_BLUE);
+    tft.print("S1      S2      S3");
+    if (state_SK1)
+    {
+        tft.fillCircle(15, 115, 8, TFT_GREEN);
+    }
+    else
+    {
+        tft.fillCircle(15, 115, 8, TFT_RED);
+    }
+    if (state_SK2)
+    {
+        tft.fillCircle(65, 115, 8, TFT_GREEN);
+    }
+    else
+    {
+        tft.fillCircle(65, 115, 8, TFT_RED);
+    }
+    if (state_SK3)
+    {
+        tft.fillCircle(110, 115, 8, TFT_GREEN);
+    }
+    else
+    {
+        tft.fillCircle(110, 115, 8, TFT_RED);
+    }
     tft.setTextSize(2);
     if (counter1000 >= 1000)
     {
-        tft.setCursor(6, 66);
+        tft.setCursor(6, 62);
         tft.setTextColor(TFT_DARKGREEN);
-        tft.fillRect(6, 66, 120, 25, TFT_WHITE);
+        tft.fillRect(6, 62, 120, 25, TFT_WHITE);
         tft.print(timeClient.getFormattedDate());
         tft.setTextColor(TFT_PURPLE);
-        tft.setCursor(17, 94);
-        tft.fillRect(17, 94, 120, 25, TFT_WHITE);
+        tft.setCursor(17, 80);
+        tft.fillRect(17, 80, 120, 25, TFT_WHITE);
         tft.print(timeClient.getFormattedTime());
         counter1000 = 0;
     }
@@ -972,7 +1000,7 @@ void resetValuePzem()
         {
             Serial.println("ResetPIN Pressed");
             // still holding button for 3000 ms, reset settings, code not ideaa for production
-            delay(3000); // reset delay hold
+            delay(2000); // reset delay hold
             if (digitalRead(RESET_PZEM) == LOW)
             {
                 pzem.resetEnergy();
