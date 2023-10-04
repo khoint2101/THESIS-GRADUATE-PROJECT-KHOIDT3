@@ -105,6 +105,7 @@ void START_CONFIG_WF_SCREEN();
 void STOP_CONFIG_WF_SCREEN();
 void WIFI_INFOR_SCREEN();
 void DASHBOARD_SCREEN();
+void TIME_UID_SCREEN();
 void VALUE_DASHBOARD_SCREEN();
 
 //==============End prototype===========
@@ -211,8 +212,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             //      Serial.printf("Send SK1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
             Serial.println("SK 1 on");
             ws.textAll(getStateButton());
-
-            //  ws.textAll("010");
         }
         else if (strcmp((char *)data, "offsk1") == 0)
         {
@@ -224,8 +223,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             // if (send_flag_idle == true)
             //     Serial.printf("Send sk1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
             ws.textAll(getStateButton());
-
-            // ws.textAll("011");
         }
         else if (strcmp((char *)data, "onsk2") == 0)
         {
@@ -237,8 +234,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             //     Serial.printf("Send sk2....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2) ? "ok" : fbdo.errorReason().c_str());
             Serial.println("SK 2 on");
             ws.textAll(getStateButton());
-
-            // ws.textAll("100");
         }
         else if (strcmp((char *)data, "offsk2") == 0)
         {
@@ -250,8 +245,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             //     Serial.printf("Send sk2....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2) ? "ok" : fbdo.errorReason().c_str());
             // Serial.println("SK 2 off");
             ws.textAll(getStateButton());
-
-            // ws.textAll("101");
         }
         else if (strcmp((char *)data, "onsk3") == 0)
         {
@@ -263,8 +256,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             //     Serial.printf("Send sk3....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket3", (int)state_SK3) ? "ok" : fbdo.errorReason().c_str());
             // Serial.println("SK 3 on");
             ws.textAll(getStateButton());
-
-            // ws.textAll("110");
         }
         else if (strcmp((char *)data, "offsk3") == 0)
         {
@@ -276,13 +267,10 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             //     Serial.printf("Send sk3....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket3", (int)state_SK3) ? "ok" : fbdo.errorReason().c_str());
             // Serial.println("SK 3 off");
             ws.textAll(getStateButton());
-
-            // ws.textAll("111");
         }
         else if (strcmp((char *)data, "getBtn") == 0)
         {
             notifyClients(getStateButton());
-            // ws.textAll("111");
         }
     }
 }
@@ -562,7 +550,7 @@ void setup()
     pinMode(TRIGGER_PIN, INPUT);
     pinMode(RESET_PZEM, INPUT_PULLUP);
     pinMode(NORMAL_LED, OUTPUT);
-    pinMode(IDLE_LED,OUTPUT);
+    pinMode(IDLE_LED, OUTPUT);
     pinMode(ALARM_LED, OUTPUT);
 
     timer = timerBegin(0, 80, true);
@@ -612,7 +600,7 @@ void setup()
         // Assign a calback function to run when it detects changes on the database
         Firebase.RTDB.setStreamCallback(&stream, streamCallback, streamTimeoutCallback);
         Serial.printf("Set String....%s\n", Firebase.RTDB.setString(&fbdo, chipIDstr + "/dashboard/wifiinfo", (String)WiFi.SSID()) ? "okSSID" : fbdo.errorReason().c_str());
-        screenChange = 1; // screen wifi details
+        screenChange = 2; // screen wifi details
         tft.fillScreen(TFT_WHITE);
     }
 }
@@ -635,14 +623,14 @@ void loop() //====================== MAIN PROGRAM ==============================
     if (counter2000 >= 2000)
     {
         // Thực hiện các hoạt động sau mỗi interval
-       // readPzem(); // chạy thật dụng hàm này
+        // readPzem(); // chạy thật dụng hàm này
         voltageValue = random(100, 260);
         currentValue = random(0.0, 30.5);
         powerValue = random(100, 1000);
         energyValue = random(1, 100);
         pfValue = random(0.0, 10.0);
         freqValue = random(40.0, 50.0);
-        
+
         mainHour = timeClient.getHours();
         mainMin = timeClient.getMinutes();
         mainSec = timeClient.getSeconds();
@@ -667,10 +655,10 @@ void checkButton()
         {
             Serial.println("Button Pressed");
             screenChange += 1;
-            if (screenChange == 3)
+            if (screenChange == 4)
                 screenChange = 1;
             // still holding button for 3000 ms, reset settings, code not ideaa for production
-            delay(3000); // reset delay hold
+            delay(2000); // reset delay hold
             tft.fillScreen(TFT_WHITE);
             if (digitalRead(TRIGGER_PIN) == LOW)
             {
@@ -685,13 +673,15 @@ void checkButton()
 
 void MainScreenChange()
 {
-    if (screenChange == 1)
+    switch (screenChange)
     {
+    case 1:
+        TIME_UID_SCREEN();
+        break;
+    case 2:
         WIFI_INFOR_SCREEN();
-    }
-    else if (screenChange == 2)
-    {
-        // tft.fillScreen(TFT_WHITE);
+        break;
+    case 3:
         unsigned long currentMillis1 = millis();
         DASHBOARD_SCREEN();
         if (currentMillis1 - previousMillis1 >= 1500)
@@ -699,6 +689,7 @@ void MainScreenChange()
             VALUE_DASHBOARD_SCREEN();
             previousMillis1 = currentMillis1;
         }
+        break;
     }
 }
 //==========Workspace with Pzem=========
@@ -893,12 +884,10 @@ void WIFI_INFOR_SCREEN() // done
 }
 void DASHBOARD_SCREEN()
 {
-
     tft.setTextColor(TFT_DARKGREEN, TFT_YELLOW);
     tft.setCursor(0, 1);
     tft.setTextSize(2);
     tft.println(" DASHBOARD");
-
     tft.setTextColor(TFT_NAVY);
     tft.setTextSize(1);
     tft.setCursor(5, 20);
@@ -909,6 +898,39 @@ void DASHBOARD_SCREEN()
     tft.print("3. POWER:");
     tft.setCursor(5, 110);
     tft.print("4. ENERGY:");
+}
+void TIME_UID_SCREEN()
+{
+
+    tft.setTextColor(TFT_DARKGREEN, TFT_YELLOW);
+    tft.setCursor(3, 1);
+    tft.setTextSize(2);
+    tft.println("HOMESCREEN");
+    tft.setTextColor(TFT_BLUE);
+    tft.setTextSize(1);
+    tft.setCursor(5, 20);
+    tft.print("1. DEVICE ID: ");
+    tft.setTextColor(TFT_RED);
+    tft.setTextSize(2);
+    tft.setCursor(20, 32);
+    tft.print(chipIDstr);
+    tft.setTextSize(1);
+    tft.setCursor(5, 54);
+    tft.setTextColor(TFT_BLUE);
+    tft.print("2. CLOCK:");
+    tft.setTextSize(2);
+    if (counter1000 >= 1000)
+    {
+        tft.setCursor(6, 66);
+        tft.setTextColor(TFT_DARKGREEN);
+        tft.fillRect(6, 66, 120, 25, TFT_WHITE);
+        tft.print(timeClient.getFormattedDate());
+        tft.setTextColor(TFT_PURPLE);
+        tft.setCursor(17, 94);
+        tft.fillRect(17, 94, 120, 25, TFT_WHITE);
+        tft.print(timeClient.getFormattedTime());
+        counter1000 = 0;
+    }
 }
 void VALUE_DASHBOARD_SCREEN() // bảng các thông số điện
 {
@@ -963,30 +985,29 @@ void resetValuePzem()
         Serial.printf("Send del_state....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/del_state", (int)0) ? "ok" : fbdo.errorReason().c_str()); // new
     }
 }
-void checkAlarmPower() // errorr
+void checkAlarmPower() // Ham kiem tra trang thai Cong suat
 {
     // 5:green
     //  19:red
-    if (powerAlertStt == 1 && powerValue >= powerAlertNumber )
+    if (powerAlertStt == 1 && powerValue >= powerAlertNumber)
     {
         digitalWrite(NORMAL_LED, LOW);
         digitalWrite(ALARM_LED, HIGH);
-        digitalWrite(IDLE_LED,LOW);
+        digitalWrite(IDLE_LED, LOW);
     }
     else if (powerAlertStt == 1 && powerValue < powerAlertNumber)
     {
         digitalWrite(ALARM_LED, LOW);
         digitalWrite(NORMAL_LED, HIGH);
-        digitalWrite(IDLE_LED,LOW);
-    }else if (powerAlertStt == 0)
-    {
-       digitalWrite(ALARM_LED, LOW);
-        digitalWrite(NORMAL_LED, LOW);
-        digitalWrite(IDLE_LED,HIGH);
+        digitalWrite(IDLE_LED, LOW);
     }
-    
+    else if (powerAlertStt == 0)
+    {
+        digitalWrite(ALARM_LED, LOW);
+        digitalWrite(NORMAL_LED, LOW);
+        digitalWrite(IDLE_LED, HIGH);
+    }
 }
-
 void sendDataToRTDB()
 {
     // send data every 5s to Firebase Realtime
