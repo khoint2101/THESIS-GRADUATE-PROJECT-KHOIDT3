@@ -24,13 +24,16 @@
 #endif
 #define PZEM_SERIAL Serial2
 #define TRIGGER_PIN 0
-#define RESET_PZEM 22
-#define NORMAL_LED 5
-#define IDLE_LED 25
-#define ALARM_LED 19
-#define IN1_RELAY 12
-#define IN2_RELAY 14
-#define IN3_RELAY 27
+#define RESET_PZEM_PIN 22
+#define NORMAL_LED_PIN 5
+#define IDLE_LED_PIN 25
+#define ALARM_LED_PIN 19
+#define IN1_RELAY_PIN 12
+#define IN2_RELAY_PIN 14
+#define IN3_RELAY_PIN 27
+#define SW_RELAY1_PIN 13
+#define SW_RELAY2_PIN 21
+#define SW_RELAY3_PIN 26
 
 #define API_KEY "AIzaSyA63-WGsXRJKT3ididiQOBMETy8T1tW3qk" // replace the API key
 #define USER_EMAIL "adminhardwareauthen@gmail.com"
@@ -207,7 +210,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK1 = true;
             flag_webserver_handle = true;
             flag_webserver_socket_name = 1;
-            // digitalWrite(IN1_RELAY, state_SK1);
+            // digitalWrite(IN1_RELAY_PIN, state_SK1);
             //  if (send_flag_idle == true)
             //      Serial.printf("Send SK1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
             Serial.println("SK 1 on");
@@ -219,7 +222,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             flag_webserver_handle = true;
             flag_webserver_socket_name = 1;
             Serial.println("SK 1 off");
-            // digitalWrite(IN1_RELAY, state_SK1);
+            // digitalWrite(IN1_RELAY_PIN, state_SK1);
             // if (send_flag_idle == true)
             //     Serial.printf("Send sk1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
             ws.textAll(getStateButton());
@@ -229,7 +232,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK2 = true;
             flag_webserver_handle = true;
             flag_webserver_socket_name = 2;
-            // digitalWrite(IN2_RELAY, state_SK2);
+            // digitalWrite(IN2_RELAY_PIN, state_SK2);
             // if (send_flag_idle == true)
             //     Serial.printf("Send sk2....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2) ? "ok" : fbdo.errorReason().c_str());
             Serial.println("SK 2 on");
@@ -240,7 +243,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK2 = false;
             flag_webserver_handle = true;
             flag_webserver_socket_name = 2;
-            // digitalWrite(IN2_RELAY, state_SK2);
+            // digitalWrite(IN2_RELAY_PIN, state_SK2);
             // if (send_flag_idle == true)
             //     Serial.printf("Send sk2....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2) ? "ok" : fbdo.errorReason().c_str());
             // Serial.println("SK 2 off");
@@ -251,7 +254,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK3 = true;
             flag_webserver_handle = true;
             flag_webserver_socket_name = 3;
-            // digitalWrite(IN3_RELAY, state_SK3);
+            // digitalWrite(IN3_RELAY_PIN, state_SK3);
             // if (send_flag_idle == true)
             //     Serial.printf("Send sk3....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket3", (int)state_SK3) ? "ok" : fbdo.errorReason().c_str());
             // Serial.println("SK 3 on");
@@ -262,7 +265,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK3 = false;
             flag_webserver_handle = true;
             flag_webserver_socket_name = 3;
-            // digitalWrite(IN3_RELAY, state_SK3);
+            // digitalWrite(IN3_RELAY_PIN, state_SK3);
             // if (send_flag_idle == true)
             //     Serial.printf("Send sk3....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket3", (int)state_SK3) ? "ok" : fbdo.errorReason().c_str());
             // Serial.println("SK 3 off");
@@ -304,9 +307,9 @@ void initWebSocket()
 
 void initRelayPin()
 {
-    pinMode(IN1_RELAY, OUTPUT);
-    pinMode(IN2_RELAY, OUTPUT);
-    pinMode(IN3_RELAY, OUTPUT);
+    pinMode(IN1_RELAY_PIN, OUTPUT);
+    pinMode(IN2_RELAY_PIN, OUTPUT);
+    pinMode(IN3_RELAY_PIN, OUTPUT);
 }
 //==================Stream Callback Firebase==================
 void streamCallback(FirebaseStream data)
@@ -331,7 +334,7 @@ void streamCallback(FirebaseStream data)
             state_SK1 = data.intData();
             Serial.print("STATE: ");
             Serial.println(state_SK1);
-            // digitalWrite(IN1_RELAY, state_SK1);
+            // digitalWrite(IN1_RELAY_PIN, state_SK1);
             ws.textAll(getStateButton());
         }
         else if (namePath == "socket2")
@@ -339,7 +342,7 @@ void streamCallback(FirebaseStream data)
             state_SK2 = data.intData();
             Serial.print("STATE: ");
             Serial.println(state_SK2);
-            // digitalWrite(IN2_RELAY, state_SK2);
+            // digitalWrite(IN2_RELAY_PIN, state_SK2);
             ws.textAll(getStateButton());
         }
         else if (namePath == "socket3")
@@ -347,7 +350,7 @@ void streamCallback(FirebaseStream data)
             state_SK3 = data.intData();
             Serial.print("STATE: ");
             Serial.println(state_SK3);
-            // digitalWrite(IN3_RELAY, state_SK3);
+            // digitalWrite(IN3_RELAY_PIN, state_SK3);
             ws.textAll(getStateButton());
         }
         else if (namePath == "del_state")
@@ -541,17 +544,20 @@ void setup()
     listenerPath = chipIDstr + "/control/";
     Serial.printf("Chip ID: %u\n", chipID);
     tft.init();
-    tft.setRotation(0);
+    tft.setRotation(1);
     WELCOME_SCREEN();
     initRelayPin();
     Serial.setDebugOutput(true); // debug WIFI MANAGER
     // wm.setHttpPort(8080); // set another port for WM because https://github.com/rancilio-pid/clevercoffee/issues/323
     Serial.println("\n Starting");
     pinMode(TRIGGER_PIN, INPUT);
-    pinMode(RESET_PZEM, INPUT_PULLUP);
-    pinMode(NORMAL_LED, OUTPUT);
-    pinMode(IDLE_LED, OUTPUT);
-    pinMode(ALARM_LED, OUTPUT);
+    pinMode(RESET_PZEM_PIN, INPUT_PULLUP);
+    pinMode(SW_RELAY1_PIN, INPUT_PULLUP);
+    pinMode(SW_RELAY2_PIN, INPUT_PULLUP);
+    pinMode(SW_RELAY3_PIN, INPUT_PULLUP);
+    pinMode(NORMAL_LED_PIN, OUTPUT);
+    pinMode(IDLE_LED_PIN, OUTPUT);
+    pinMode(ALARM_LED_PIN, OUTPUT);
 
     timer = timerBegin(0, 80, true);
     timerAttachInterrupt(timer, &onTimer, true);
@@ -667,6 +673,42 @@ void checkButton()
                 wm.resetSettings();
                 ESP.restart();
             }
+        }
+    }
+    if (digitalRead(SW_RELAY1_PIN) == LOW)
+    {
+        delay(50);
+        if (digitalRead(SW_RELAY1_PIN) == LOW)
+        {
+            Serial.println("SK1 BTN  Pressed");
+            state_SK1 = !state_SK1;
+            flag_webserver_handle = true;
+            flag_webserver_socket_name = 1;
+            ws.textAll(getStateButton());
+        }
+    }
+    if (digitalRead(SW_RELAY2_PIN) == LOW)
+    {
+        delay(50);
+        if (digitalRead(SW_RELAY2_PIN) == LOW)
+        {
+            Serial.println("SK2 BTN  Pressed");
+            state_SK2 = !state_SK2;
+            flag_webserver_handle = true;
+            flag_webserver_socket_name = 2;
+            ws.textAll(getStateButton());
+        }
+    }
+    if (digitalRead(SW_RELAY3_PIN) == LOW)
+    {
+        delay(50);
+        if (digitalRead(SW_RELAY3_PIN) == LOW)
+        {
+            Serial.println("SK3 BTN  Pressed");
+            state_SK3 = !state_SK3;
+            flag_webserver_handle = true;
+            flag_webserver_socket_name = 3;
+            ws.textAll(getStateButton());
         }
     }
 }
@@ -932,11 +974,11 @@ void TIME_UID_SCREEN()
     }
     if (state_SK2)
     {
-        tft.fillCircle(65, 115, 8, TFT_GREEN);
+        tft.fillCircle(62, 115, 8, TFT_GREEN);
     }
     else
     {
-        tft.fillCircle(65, 115, 8, TFT_RED);
+        tft.fillCircle(62, 115, 8, TFT_RED);
     }
     if (state_SK3)
     {
@@ -992,16 +1034,16 @@ void VALUE_DASHBOARD_SCREEN() // bảng các thông số điện
 }
 void resetValuePzem()
 {
-    if (digitalRead(RESET_PZEM) == LOW)
+    if (digitalRead(RESET_PZEM_PIN) == LOW)
     {
         // poor mans debounce/press-hold, code not ideal for production
         delay(50);
-        if (digitalRead(RESET_PZEM) == LOW)
+        if (digitalRead(RESET_PZEM_PIN) == LOW)
         {
             Serial.println("ResetPIN Pressed");
             // still holding button for 3000 ms, reset settings, code not ideaa for production
             delay(2000); // reset delay hold
-            if (digitalRead(RESET_PZEM) == LOW)
+            if (digitalRead(RESET_PZEM_PIN) == LOW)
             {
                 pzem.resetEnergy();
             }
@@ -1019,21 +1061,21 @@ void checkAlarmPower() // Ham kiem tra trang thai Cong suat
     //  19:red
     if (powerAlertStt == 1 && powerValue >= powerAlertNumber)
     {
-        digitalWrite(NORMAL_LED, LOW);
-        digitalWrite(ALARM_LED, HIGH);
-        digitalWrite(IDLE_LED, LOW);
+        digitalWrite(NORMAL_LED_PIN, LOW);
+        digitalWrite(ALARM_LED_PIN, HIGH);
+        digitalWrite(IDLE_LED_PIN, LOW);
     }
     else if (powerAlertStt == 1 && powerValue < powerAlertNumber)
     {
-        digitalWrite(ALARM_LED, LOW);
-        digitalWrite(NORMAL_LED, HIGH);
-        digitalWrite(IDLE_LED, LOW);
+        digitalWrite(ALARM_LED_PIN, LOW);
+        digitalWrite(NORMAL_LED_PIN, HIGH);
+        digitalWrite(IDLE_LED_PIN, LOW);
     }
     else if (powerAlertStt == 0)
     {
-        digitalWrite(ALARM_LED, LOW);
-        digitalWrite(NORMAL_LED, LOW);
-        digitalWrite(IDLE_LED, HIGH);
+        digitalWrite(ALARM_LED_PIN, LOW);
+        digitalWrite(NORMAL_LED_PIN, LOW);
+        digitalWrite(IDLE_LED_PIN, HIGH);
     }
 }
 void sendDataToRTDB()
@@ -1081,32 +1123,37 @@ void SetupControlRTDB()
 }
 void ControlRelay()
 {
-    digitalWrite(IN1_RELAY, state_SK1);
-    digitalWrite(IN2_RELAY, state_SK2);
-    digitalWrite(IN3_RELAY, state_SK3);
+    digitalWrite(IN1_RELAY_PIN, state_SK1);
+    digitalWrite(IN2_RELAY_PIN, state_SK2);
+    digitalWrite(IN3_RELAY_PIN, state_SK3);
     if (flag_webserver_handle == true && flag_webserver_socket_name == 0)
     {
         Serial.printf("Send SK1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
         Serial.printf("Send SK2....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2) ? "ok" : fbdo.errorReason().c_str());
         Serial.printf("Send SK3....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket3", (int)state_SK3) ? "ok" : fbdo.errorReason().c_str());
+        delay(10);
         flag_webserver_handle = false;
         flag_webserver_socket_name = 0;
     }
     else if (flag_webserver_handle == true && flag_webserver_socket_name == 1)
     {
+        
         Serial.printf("Send SK1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
+        delay(10);
         flag_webserver_handle = false;
         flag_webserver_socket_name = 0;
     }
     else if (flag_webserver_handle == true && flag_webserver_socket_name == 2)
     {
         Serial.printf("Send SK2....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2) ? "ok" : fbdo.errorReason().c_str());
+        delay(10);
         flag_webserver_handle = false;
         flag_webserver_socket_name = 0;
     }
     else if (flag_webserver_handle == true && flag_webserver_socket_name == 3)
     {
         Serial.printf("Send SK3....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket3", (int)state_SK3) ? "ok" : fbdo.errorReason().c_str());
+        delay(10);
         flag_webserver_handle = false;
         flag_webserver_socket_name = 0;
     }
