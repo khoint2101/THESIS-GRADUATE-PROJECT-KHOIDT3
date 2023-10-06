@@ -517,7 +517,7 @@ void initFirebase()
     fbdo.setBSSLBufferSize(4096, 4096);
     Firebase.begin(&config, &auth);
     config.timeout.socketConnection = 10 * 1000;
-    config.tcp_data_sending_retry = 1; // The function that starting the new TCP session
+   // config.tcp_data_sending_retry = 1; // The function that starting the new TCP session
     Serial.println("Successfull Init Firebase");
 }
 
