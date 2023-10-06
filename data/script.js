@@ -3,36 +3,38 @@ var gateway = `ws://${window.location.hostname}/ws`;
 var websocket;
 const btnAll = {
     on: `<img src="./img/onpower.png" alt="MAIN POWER ON" width="100px" height="100px">
-    <h4>ON ALL</h4>`,
+    <h4>BẬT HẾT</h4>`,
     off: `<img src="./img/offpower.png" alt="MAIN POWER OFF" width="100px" height="100px">
-    <h4>OFF ALL</h4>`,
+    <h4>TẮT HẾT</h4>`,
     value: false
 }
 const socket1 = {
     on: `<img src="./img/socket1.png" alt="SOCKET 1 ON" width="100px" height="100px">
-    <h4>SOCKET 1: ON</h4>`,
+    <h4>HẠT ĐIỆN 1: BẬT</h4>`,
     off: `<img src="./img/socket.png" alt="SOCKET 1 OFF" width="100px" height="100px">
-    <h4>SOCKET 1: OFF</h4>`,
+    <h4>HẠT ĐIỆN 1: TẮT</h4>`,
     value: true
 }
 const socket2 = {
     on: `<img src="./img/socket2.png" alt="SOCKET 2 ON" width="100px" height="100px">
-    <h4>SOCKET 2: ON</h4>`,
+    <h4>HẠT ĐIỆN 2: BẬT</h4>`,
     off: `<img src="./img/socket.png" alt="SOCKET 2 OFF" width="100px" height="100px">
-    <h4>SOCKET 2: OFF</h4>`,
+    <h4>HẠT ĐIỆN 2: TẮT</h4>`,
     value: true
 }
 const socket3 = {
         on: `<img src="./img/socket3.png" alt="SOCKET 3 ON" width="100px" height="100px">
-    <h4>SOCKET 3: ON</h4>`,
+    <h4>HẠT ĐIỆN 3: BẬT</h4>`,
         off: `<img src="./img/socket.png" alt="SOCKET 3 OFF" width="100px" height="100px">
-    <h4>SOCKET 3: OFF</h4>`,
+    <h4>HẠT ĐIỆN 3: TẮT</h4>`,
         value: true
     }
     //============Biến của Gauge=================
 var voltageVar; // biến của điện áp
 var ampeVar; // biến của dòng điện
 var powerVar; // biến của công suất tức thời
+var energyVar; // số điện 
+const elecPrice = [1728,1786,2074,2612,2919,3015,2535];
 
 const button = document.getElementById('all_btn'); // main power button
 const button1 = document.getElementById('first_btn'); // socket button 1
@@ -86,6 +88,7 @@ function onMessage(event) { // phản hồi được trạng thái nút nhấn s
         voltageVar = parseFloat(myObj.Volt);
         ampeVar = parseFloat(myObj.Current);
         powerVar = parseFloat(myObj.Power);
+        energyVar = parseFloat(myObj.Energy);
         document.getElementById('voltage_value').innerHTML = voltageVar + ' V';
         document.getElementById('current_value').innerHTML = ampeVar + ' A';
         document.getElementById('power_value').innerHTML = powerVar + ' W';
@@ -94,63 +97,6 @@ function onMessage(event) { // phản hồi được trạng thái nút nhấn s
         document.getElementById('pfactor_value').innerHTML = myObj.Pf;
 
     }
-
-
-
-    //var myObj = JSON.parse(event.data);
-    // btnAll.value = myObj.MainButton === "1" ? true : false;
-    // socket1.value = myObj.Button1 === "1" ? true : false;
-    // socket2.value = myObj.Button2 === "1" ? true : false;
-    // socket3.value = myObj.Button3 === "1" ? true : false;
-    // //callbackBtn(button, btnAll);     /// vướng chỗ đổi trạng thái của button main
-    // stateBtn(button, btnAll, btnAll.value);
-    // stateBtn(button1, socket1, socket1.value);
-    // stateBtn(button2, socket2, socket2.value);
-    // stateBtn(button3, socket3, socket3.value);
-
-
-    // var state;
-    // if (event.data == "000") {
-    //     state = "ON MAIN";
-    //     btnAll.value = true;
-    //     callbackBtn(button, btnAll);
-    //     stateBtn(button1, socket1, true);
-    //     stateBtn(button2, socket2, true);
-    //     stateBtn(button3, socket3, true);
-    //     // btnAll.value = true;
-    // } else if (event.data == "001") {
-    //     state = "OFF MAIN";
-    //     btnAll.value = false;
-    //     callbackBtn(button, btnAll);
-    //     stateBtn(button1, socket1, false);
-    //     stateBtn(button2, socket2, false);
-    //     stateBtn(button3, socket3, false);
-    //     // btnAll.value = false;// lỗi
-    // } else if (event.data == "010") {
-    //     stateBtn(button1, socket1, true);
-    //     state = "on 1";
-
-    // } else if (event.data == "011") {
-    //     stateBtn(button1, socket1, false);
-    //     state = "OFF 1";
-
-    // } else if (event.data == "100") {
-    //     state = "on 2";
-    //     stateBtn(button2, socket2, true);
-
-    // } else if (event.data == "101") {
-    //     state = "OFF 2";
-    //     stateBtn(button2, socket2, false);
-
-    // } else if (event.data == "110") {
-    //     state = "on 3";
-    //     stateBtn(button3, socket3, true);
-
-    // } else if (event.data == "111") {
-    //     state = "OFF 3";
-    //     stateBtn(button3, socket3, false);
-
-    // }
 
 } /*Hàm này và hàm ws.textAll là một cặp truyền nhận xử lý tin nhắn */
 
@@ -222,13 +168,40 @@ function FnButton3() {
         websocket.send('offsk3');
     }
 }
+function noticePrice() {
+    if (energyVar>=0 && energyVar<=50) {
+        document.getElementById('lv_elec_price').innerHTML = "<span style='color: green;'>Mức giá 1</span>";
+        document.getElementById('value_elec_price').innerHTML = elecPrice[0] + " VNĐ";
+        document.getElementById('sum_elec_price').innerHTML = elecPrice[0] * energyVar + " VNĐ";
+        document.getElementById("alert_lv_elec_price").innerHTML = "<h1 style='color: green;'>!!VẪN CỨ LÀ OKE, BẠN ĐANG Ở MỨC GIÁ 1!!</h1>";
+    }else if (energyVar>=51 && energyVar<=100){
+        document.getElementById('lv_elec_price').innerHTML = "<span style='color: green;'>Mức giá 2</span>";
+        document.getElementById('value_elec_price').innerHTML = elecPrice[1] + " VNĐ";
+        document.getElementById('sum_elec_price').innerHTML = (energyVar -50) * elecPrice[1] + 50 * elecPrice[0]+ " VNĐ";
+        document.getElementById("alert_lv_elec_price").innerHTML ="<h1 style='color: green;'>!!Ơ @@ MỨC GIÁ 2 RỒI NÀY!!</h1>";
+    }else if (energyVar>=101 && energyVar<=200){
+        document.getElementById('lv_elec_price').innerHTML ="<span style='color: orange;'>Mức giá 3</span>";
+        document.getElementById('value_elec_price').innerHTML = elecPrice[2] + " VNĐ";
+        document.getElementById('sum_elec_price').innerHTML = 50*elecPrice[0] + 50*elecPrice[1] + (energyVar - 100)*elecPrice[2]+ " VNĐ";
+        document.getElementById("alert_lv_elec_price").innerHTML = "<h1 style='color: orange;'>!!ĐÃ DÙNG TỚI MỨC GIÁ 3 - CHÚ Ý TIẾT KIỆM NĂNG LƯỢNG!!</h1>";
+    }else if (energyVar>=201 && energyVar<=300){
+        document.getElementById('lv_elec_price').innerHTML = "<span style='color: red;'>Mức giá 4</span>";
+        document.getElementById('value_elec_price').innerHTML = elecPrice[3] + " VNĐ";
+        document.getElementById('sum_elec_price').innerHTML = 50*elecPrice[0] + 50*elecPrice[1] + 100*elecPrice[2] + (energyVar - 200)*elecPrice[3]+ " VNĐ";
+        document.getElementById("alert_lv_elec_price").innerHTML = "<h1 style='color: red;'>!!ĐÃ DÙNG TỚI MỨC GIÁ 4 - CHÚ Ý HƠN VIỆC TIẾT KIỆM NĂNG LƯỢNG!!</h1>";
+    }else if (energyVar>=301 && energyVar<=400){
+        document.getElementById('lv_elec_price').innerHTML = "<span style='color: red;'>Mức giá 5</span>";
+        document.getElementById('value_elec_price').innerHTML = elecPrice[4] + " VNĐ";
+        document.getElementById('sum_elec_price').innerHTML = 50*elecPrice[0] + 50*elecPrice[1] + 100*elecPrice[2] + 100*elecPrice[3] + (energyVar - 300)*elecPrice[4]+ " VNĐ";
+        document.getElementById("alert_lv_elec_price").innerHTML = "<h1 style='color: red;'>!!ĐÃ DÙNG TỚI MỨC GIÁ 5 - CẦN THIẾT TIẾT KIỆM NĂNG LƯỢNG!!</h1>";
+    }else if (energyVar>=401){
+        document.getElementById('lv_elec_price').innerHTML = "<span style='color: red;'>Mức giá 6</span>";
+        document.getElementById('value_elec_price').innerHTML = elecPrice[5] + " VNĐ";
+        document.getElementById('sum_elec_price').innerHTML =50*elecPrice[0] + 50*elecPrice[1] + 100*elecPrice[2] + 100*elecPrice[3] + 100*elecPrice[4] + (energyVar - 400)*elecPrice[5]+ " VNĐ"; 
+        document.getElementById("alert_lv_elec_price").innerHTML = "<h1 style='color: red;'>!!MỨC GIÁ 6 - KỊCH KHUNG RỒI!!</h1>";
+    }
+}
 
-// setInterval(function() {
-//     voltageVar = Math.floor(Math.random() * 220) + 1; // biến của điện áp
-//     ampeVar = Math.floor(Math.random() * 30) + 1;; // biến của dòng điện
-//     powerVar = Math.floor(Math.random() * 3200) + 1;; // biến của công suất tức thời
-
-// }, 1500);
 function showTime() {
     var date = new Date();
     var h = date.getHours(); // 0 - 23
@@ -238,11 +211,11 @@ function showTime() {
 
 
     var months = [
-        'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'
+        'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
     ];
 
     var days = [
-        'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+        'Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'
     ];
 
     var dayOfWeek = days[date.getDay()];
@@ -250,7 +223,7 @@ function showTime() {
     var day = date.getDate();
     var year = date.getFullYear();
 
-    var dateString = dayOfWeek + ', ' + month + ' ' + day + ', ' + year;
+    var dateString = dayOfWeek + ', ' + day + ' ' + month + ', ' + year;
 
     if (h == 0) {
         h = 12;
@@ -273,5 +246,4 @@ function showTime() {
     setTimeout(showTime, 1000);
 
 }
-
 showTime();

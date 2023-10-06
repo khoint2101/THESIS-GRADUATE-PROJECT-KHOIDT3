@@ -2,6 +2,7 @@
 <html>
 
 <head>
+    <meta charset="UTF-8">
     <title>DASHBOARD WIFI SOCKET </title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/png" href="./img/favicon.png">
@@ -24,8 +25,8 @@
 <body>
     <div class="topnav">
         <!-- <img src="logo.png" height="100px" width="100px" /> -->
-        <h1>GRADUATION PROJECT</h1>
-        <h1>Remote-Controlled Power Socket and Energy Consumption Measurement</h1>
+        <h1>ĐỒ ÁN TỐT NGHIỆP</h1>
+        <h1>Ổ CẮM THÔNG MINH GIÁM SÁT ĐIỆN NĂNG VÀ ĐIỀU KHIỂN TỪ XA</h1>
     </div>
     <div class="content">
         <div class="card">
@@ -38,21 +39,21 @@
                 </div>
                 <div class="information">
                     <span style="color: rgb(0, 0, 0);margin-top: 15px" class="material-symbols-outlined">bolt </span>
-                    <h2 style="color: rgb(0, 0, 0);">ENERGY (kWh)</h2>
+                    <h2 style="color: rgb(0, 0, 0);">SỐ ĐIỆN (kWh)</h2>
                     <h1 style="color:rgb(255, 0, 0); margin-top: 15px;" id="energy_value">50 kWh</h1>
                 </div>
                 <div class="information">
                     <span style="color: rgb(0, 0, 0);margin-top: 15px" class="material-symbols-outlined">
                         query_stats
                         </span>
-                    <h2 style="color: rgb(0, 0, 0);">POWER FACTOR</h2>
+                    <h2 style="color: rgb(0, 0, 0);">HỆ SỐ CÔNG SUẤT</h2>
                     <h1 style="color:rgb(42, 102, 212); margin-top: 15px;" id="pfactor_value">0.91</h1>
                 </div>
                 <div class="information">
                     <span style="color: rgb(0, 0, 0);margin-top: 15px" class="material-symbols-outlined">
                         earthquake
                         </span>
-                    <h2 style="color: rgb(0, 0, 0);">FREQUENCY (Hz)</h2>
+                    <h2 style="color: rgb(0, 0, 0);">TẦN SỐ (Hz)</h2>
                     <h1 style="color:rgb(44, 182, 113); margin-top: 15px;" id="freq_value">50 Hz</h1>
                 </div>
             </div>
@@ -76,7 +77,23 @@
                     <h1 style="color:rgb(243, 111, 3); margin-top: 15px;" id="power_value">220W</h1>
                 </div>
                 <div class="information">
-                    <h1 style="color:rgb(243, 111, 3); margin-top: 15px;">Coming soon...</h1>
+                    <h1 style="color:rgb(0, 0, 0); margin-top: 15px;">THÔNG BÁO - CHI PHÍ</h1>
+                    <table>
+                        <tr>
+                          <td style="color: rgb(253, 107, 91);">Mức giá điện hiện tại: </td>
+                          <td id="lv_elec_price">null</td>
+                        </tr>
+                        <tr>
+                          <td style="color: rgb(29, 181, 42);">Đơn giá: </td>
+                          <td id="value_elec_price">null</td>
+                        </tr>
+                        <tr>
+                          <td style="color: rgb(68, 42, 239);">Tiền điện tạm tính: </td>
+                          <td id="sum_elec_price" style="color: rgb(241, 30, 30);">null</td>
+                        </tr>
+                      </table>
+                      <div id="alert_lv_elec_price" style="color: red;"></div>
+                    
                 </div>
             </div>
             <div id="myChart"></div>
@@ -84,7 +101,7 @@
         <div class="card">
             <div class="control-container">
                 <div class="center-container">
-                    <h2>CONTROL PANEL</h2>
+                    <h2>THANH ĐIỀU KHIỂN</h2>
                     <!-- <p class="state">state: <span id="state">%STATE%</span></p> -->
                 </div>
                 <div class="center-container">
@@ -106,9 +123,9 @@
         <!--    <-- Thanh footer -->
         <div class="card-grid">
             <div class="a">
-                <h3 style="text-align: left;color:rgb(170, 36, 36);padding-top:10px;">ACADEMY OF CRYPTOGRAPHY AND TECHNIQUES</h3>
-                <h4 style="text-align: left;">Nguyen Trong Khoi DT030223</h4>
-                <h4 style="text-align: left;">Phone Number: 0855073665</h4>
+                <h3 style="text-align: left;color:rgb(170, 36, 36);padding-top:10px;">HỌC VIỆN KĨ THUẬT MẬT MÃ</h3>
+                <h4 style="text-align: left;">Nguyễn Trọng Khôi DT030223</h4>
+                <h4 style="text-align: left;">Số điện thoại: 0855073665</h4>
                 <h4 style="text-align: left;">Email: nguyenkhoi211001@gmail.com</h4>
             </div>
             <div class="button-container">

@@ -11,7 +11,7 @@ var myConfig = {
             'adjust-layout': true /* For automatic margin adjustment. */
         },
         title: {
-            text: "Live Chart Meter",
+            text: "Biểu đồ đo điện",
             adjustLayout: true,
             "media-rules": [{
                 "max-width": 650,
@@ -175,5 +175,6 @@ setInterval(function() {
 
     // batch update all chart modifications
     zingchart.exec('myChart', 'update');
-
+    noticePrice();
 }, 2000);
+

@@ -16,7 +16,7 @@ jQuery(document).ready(function($) {
             }
         },
         title: {
-            text: 'Voltage',
+            text: 'ĐIỆN ÁP',
             subtitle: 'Unit: Volt (V)',
             position: 'top-center'
         },
@@ -60,7 +60,7 @@ jQuery(document).ready(function($) {
             }
         },
         title: {
-            text: 'Current',
+            text: 'DÒNG ĐIỆN',
             subtitle: 'Unit: Ampe (A)',
             position: 'top-center'
         },
@@ -104,7 +104,7 @@ jQuery(document).ready(function($) {
             }
         },
         title: {
-            text: 'Power',
+            text: 'CÔNG SUẤT',
             subtitle: 'Unit: Watt (W)',
             position: 'top-center'
         },
@@ -135,7 +135,6 @@ jQuery(document).ready(function($) {
         gauge1.option('value', voltageVar);
         gauge2.option('value', ampeVar);
         gauge3.option('value', powerVar);
-
     }, 1500); // Gọi lại hàm sau mỗi 2 giây
 
 });

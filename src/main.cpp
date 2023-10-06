@@ -43,6 +43,7 @@
 
 PZEM004Tv30 pzem(PZEM_SERIAL, PZEM_RX_PIN, PZEM_TX_PIN);
 TFT_eSPI tft = TFT_eSPI();
+TFT_eSprite splashSprite = TFT_eSprite(&tft);
 
 WiFiUDP ntpUDP; // get time from Internet
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 7 * 3600, 60000);
@@ -545,6 +546,9 @@ void setup()
     Serial.printf("Chip ID: %u\n", chipID);
     tft.init();
     tft.setRotation(1);
+    tft.setSwapBytes(true);
+    splashSprite.createSprite(128, 128);
+    splashSprite.setSwapBytes(true);
     WELCOME_SCREEN();
     initRelayPin();
     Serial.setDebugOutput(true); // debug WIFI MANAGER
@@ -633,7 +637,7 @@ void loop() //====================== MAIN PROGRAM ==============================
         voltageValue = random(100, 260);
         currentValue = random(0.0, 30.5);
         powerValue = random(100, 1000);
-        energyValue = random(1, 100);
+        energyValue = random(1, 500);
         pfValue = random(0.0, 10.0);
         freqValue = random(40.0, 50.0);
 
@@ -646,7 +650,7 @@ void loop() //====================== MAIN PROGRAM ==============================
         Serial.println(totalHeap);
         Serial.println(freeHeap);
         Serial.println(timeClient.getFormattedTime());
-        // ReadDataFromRTDB();
+        
         counter2000 = 0;
     }
 }
@@ -821,21 +825,24 @@ void checkWifi_config()
 
 void WELCOME_SCREEN() // done
 {
+    // tft.fillScreen(TFT_WHITE);
+    // tft.setTextColor(TFT_DARKGREEN, TFT_YELLOW);
+    // tft.setCursor(30, 3);
+    // tft.setTextSize(2);
+    // tft.print("DO AN");
+    // tft.setTextColor(TFT_RED);
+    // tft.setCursor(5, 23);
+    // tft.setTextSize(2);
+    // tft.print("TOT NGHIEP");
+    // tft.setTextColor(TFT_RED);
+    // tft.setCursor(28, 45);
+    // tft.setTextSize(1);
+    // tft.print("SMART SOCKET");
+    // tft.drawXBitmap(0, 63, socket_img, 64, 64, TFT_RED);
+    // tft.drawXBitmap(64, 63, measure, 64, 64, TFT_DARKGREEN);
     tft.fillScreen(TFT_WHITE);
-    tft.setTextColor(TFT_DARKGREEN, TFT_YELLOW);
-    tft.setCursor(30, 3);
-    tft.setTextSize(2);
-    tft.print("DO AN");
-    tft.setTextColor(TFT_RED);
-    tft.setCursor(5, 23);
-    tft.setTextSize(2);
-    tft.print("TOT NGHIEP");
-    tft.setTextColor(TFT_RED);
-    tft.setCursor(28, 45);
-    tft.setTextSize(1);
-    tft.print("SMART SOCKET");
-    tft.drawXBitmap(0, 63, socket_img, 64, 64, TFT_RED);
-    tft.drawXBitmap(64, 63, measure, 64, 64, TFT_DARKGREEN);
+    splashSprite.pushImage(0, 0, 128, 128, splashScreen);
+    splashSprite.pushSprite(0, 0);
     delay(2000);
 }
 void START_CONFIG_WF_SCREEN() // done
@@ -943,7 +950,6 @@ void DASHBOARD_SCREEN()
 }
 void TIME_UID_SCREEN()
 {
-
     tft.setTextColor(TFT_DARKGREEN, TFT_YELLOW);
     tft.setCursor(3, 1);
     tft.setTextSize(2);
@@ -974,11 +980,11 @@ void TIME_UID_SCREEN()
     }
     if (state_SK2)
     {
-        tft.fillCircle(62, 115, 8, TFT_GREEN);
+        tft.fillCircle(65, 115, 8, TFT_GREEN);
     }
     else
     {
-        tft.fillCircle(62, 115, 8, TFT_RED);
+        tft.fillCircle(65, 115, 8, TFT_RED);
     }
     if (state_SK3)
     {
@@ -1137,7 +1143,7 @@ void ControlRelay()
     }
     else if (flag_webserver_handle == true && flag_webserver_socket_name == 1)
     {
-        
+
         Serial.printf("Send SK1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
         delay(10);
         flag_webserver_handle = false;

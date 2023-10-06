@@ -5,10 +5,28 @@ html {
 }
 
 h1 {
+  margin-top: 10px;
   font-size: 1.8rem;
   color: #f1f1f1;
 }
-
+table {
+  margin-top: 20px;
+  border-collapse: collapse;
+  margin-left: auto;
+  margin-right: auto; /* Căn giữa theo chiều ngang */
+}
+/* Định dạng các ô trong bảng */
+td {
+  border: 2px solid blueviolet;
+  padding: 10px;
+  text-align: left; /* Căn trái cho các ô */
+  font-weight: bold;
+  font-size: large;
+}
+/* Định dạng hàng đầu của bảng (để giữa) */
+tr:first-child td {
+  text-align: center; /* Căn giữa cho hàng đầu */
+}
 h2 {
   font-size: 1.6rem;
   color: rgb(255, 146, 4);
