@@ -191,7 +191,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             flag_webserver_socket_name = 0;
             Serial.println(mainButton);
             ws.textAll(getStateButton());
-            // ws.textAll("000");
         }
         else if (strcmp((char *)data, "offall") == 0)
         {
@@ -203,17 +202,12 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             flag_webserver_socket_name = 0;
             Serial.println(mainButton);
             ws.textAll(getStateButton());
-
-            //  ws.textAll("001");
         }
         else if (strcmp((char *)data, "onsk1") == 0)
         {
             state_SK1 = true;
             flag_webserver_handle = true;
             flag_webserver_socket_name = 1;
-            // digitalWrite(IN1_RELAY_PIN, state_SK1);
-            //  if (send_flag_idle == true)
-            //      Serial.printf("Send SK1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
             Serial.println("SK 1 on");
             ws.textAll(getStateButton());
         }
@@ -223,9 +217,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             flag_webserver_handle = true;
             flag_webserver_socket_name = 1;
             Serial.println("SK 1 off");
-            // digitalWrite(IN1_RELAY_PIN, state_SK1);
-            // if (send_flag_idle == true)
-            //     Serial.printf("Send sk1....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket1", (int)state_SK1) ? "ok" : fbdo.errorReason().c_str());
             ws.textAll(getStateButton());
         }
         else if (strcmp((char *)data, "onsk2") == 0)
@@ -233,9 +224,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK2 = true;
             flag_webserver_handle = true;
             flag_webserver_socket_name = 2;
-            // digitalWrite(IN2_RELAY_PIN, state_SK2);
-            // if (send_flag_idle == true)
-            //     Serial.printf("Send sk2....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2) ? "ok" : fbdo.errorReason().c_str());
             Serial.println("SK 2 on");
             ws.textAll(getStateButton());
         }
@@ -244,10 +232,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK2 = false;
             flag_webserver_handle = true;
             flag_webserver_socket_name = 2;
-            // digitalWrite(IN2_RELAY_PIN, state_SK2);
-            // if (send_flag_idle == true)
-            //     Serial.printf("Send sk2....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket2", (int)state_SK2) ? "ok" : fbdo.errorReason().c_str());
-            // Serial.println("SK 2 off");
             ws.textAll(getStateButton());
         }
         else if (strcmp((char *)data, "onsk3") == 0)
@@ -255,10 +239,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             state_SK3 = true;
             flag_webserver_handle = true;
             flag_webserver_socket_name = 3;
-            // digitalWrite(IN3_RELAY_PIN, state_SK3);
-            // if (send_flag_idle == true)
-            //     Serial.printf("Send sk3....%s\n", Firebase.RTDB.setInt(&fbdo, chipIDstr + "/control/socket3", (int)state_SK3) ? "ok" : fbdo.errorReason().c_str());
-            // Serial.println("SK 3 on");
             ws.textAll(getStateButton());
         }
         else if (strcmp((char *)data, "offsk3") == 0)
@@ -825,21 +805,6 @@ void checkWifi_config()
 
 void WELCOME_SCREEN() // done
 {
-    // tft.fillScreen(TFT_WHITE);
-    // tft.setTextColor(TFT_DARKGREEN, TFT_YELLOW);
-    // tft.setCursor(30, 3);
-    // tft.setTextSize(2);
-    // tft.print("DO AN");
-    // tft.setTextColor(TFT_RED);
-    // tft.setCursor(5, 23);
-    // tft.setTextSize(2);
-    // tft.print("TOT NGHIEP");
-    // tft.setTextColor(TFT_RED);
-    // tft.setCursor(28, 45);
-    // tft.setTextSize(1);
-    // tft.print("SMART SOCKET");
-    // tft.drawXBitmap(0, 63, socket_img, 64, 64, TFT_RED);
-    // tft.drawXBitmap(64, 63, measure, 64, 64, TFT_DARKGREEN);
     tft.fillScreen(TFT_WHITE);
     splashSprite.pushImage(0, 0, 128, 128, splashScreen);
     splashSprite.pushSprite(0, 0);
@@ -1086,17 +1051,6 @@ void checkAlarmPower() // Ham kiem tra trang thai Cong suat
 }
 void sendDataToRTDB()
 {
-    // send data every 5s to Firebase Realtime
-    // if ((unsigned long)millis() - timer_Fb >= 7000 || timer_Fb == 0)
-    // {
-    //     timer_Fb = millis();
-    //     Firebase.setFloat(fbdo, chipIDstr + "/dashboard/voltage", (float)voltageValue);
-    //     Firebase.setFloat(fbdo, chipIDstr + "/dashboard/current", (float)currentValue);
-    //     // Firebase.setFloat(fbdo, chipIDstr + "/dashboard/power", (float)powerValue);
-    //     // Firebase.setFloat(fbdo, chipIDstr + "/dashboard/pf", (float)pfValue);
-    //     // Firebase.setFloat(fbdo, chipIDstr + "/dashboard/energy", (float)energyValue);
-    //     // Firebase.setFloat(fbdo, chipIDstr + "/dashboard/frequency", (float)freqValue);
-    // }
     if (counter15000 >= 15000 && Firebase.ready())
     {
 
