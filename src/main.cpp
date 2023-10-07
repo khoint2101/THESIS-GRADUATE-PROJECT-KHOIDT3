@@ -35,11 +35,11 @@
 #define SW_RELAY2_PIN 21
 #define SW_RELAY3_PIN 26
 
-#define API_KEY "AIzaSyA63-WGsXRJKT3ididiQOBMETy8T1tW3qk" // replace the API key
-#define USER_EMAIL "adminhardwareauthen@gmail.com"
-#define USER_PASSWORD "12345678"
-#define DATABASE_URL "smartsocket-thesis-default-rtdb.asia-southeast1.firebasedatabase.app"
-#define DATABASE_SECRET "pzBkWea64aXi2g0kUnuxwEDUuGdj6Ft25YJcX9GP"
+#define API_KEY "A63-WGsXRJKT3ididETy8T1tW3qk" // replace the API key
+#define USER_EMAIL "adardwareauth@mail.com"
+#define USER_PASSWORD "123478"
+#define DATABASE_URL ""
+#define DATABASE_SECRET "pzGdj6Ft25YJcX9GP"
 
 PZEM004Tv30 pzem(PZEM_SERIAL, PZEM_RX_PIN, PZEM_TX_PIN);
 TFT_eSPI tft = TFT_eSPI();
